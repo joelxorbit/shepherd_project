@@ -70,10 +70,15 @@
          STEP 1: TEMPLATE UPLOAD
     ──────────────────────────────────────────── -->
     <section class="form-section" id="section-template">
-      <div class="section-header">
-        <div class="section-badge">Step 1</div>
-        <h2 class="section-title">Upload Word Template</h2>
-        <p class="section-desc">Your template defines the design. We'll insert your content into it.</p>
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <div class="section-badge">Step 1</div>
+          <h2 class="section-title">Upload Word Template</h2>
+          <p class="section-desc">Your template defines the design. We'll insert your content into it.</p>
+        </div>
+        <a href="/template.docx" download="shepherd_template.docx" class="btn btn-outline btn-sm" title="Download the sample template to see how it works">
+          📄 Download Sample
+        </a>
       </div>
 
       <div class="upload-zone" id="template-drop-zone" role="button" tabindex="0" aria-label="Upload Word template">
@@ -144,8 +149,12 @@
         <div class="photo-upload-inner">
           <div class="upload-icon small">📩</div>
           <p>Drag &amp; Drop invitation image(s) here or</p>
-          <label class="btn btn-outline btn-sm" for="invitation-file-input">Add Images</label>
-          <input type="file" id="invitation-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
+            <label class="btn btn-outline btn-sm" for="invitation-file-input">Add Images</label>
+            <input type="file" id="invitation-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+            <label class="btn btn-outline btn-sm" for="invitation-folder-input">Upload Folder</label>
+            <input type="file" id="invitation-folder-input" accept="image/jpeg,image/jpg,image/png,image/webp" webkitdirectory hidden />
+          </div>
           <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each — Maps to <code>{{INVITATION_1}}</code>, <code>{{INVITATION_2}}</code>…</p>
         </div>
       </div>
@@ -216,8 +225,12 @@
         <div class="photo-upload-inner">
           <div class="upload-icon small">📷</div>
           <p>Drag &amp; Drop photos here or</p>
-          <label class="btn btn-outline btn-sm" for="photo-file-input">Add Photos</label>
-          <input type="file" id="photo-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
+            <label class="btn btn-outline btn-sm" for="photo-file-input">Add Photos</label>
+            <input type="file" id="photo-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+            <label class="btn btn-outline btn-sm" for="photo-folder-input">Upload Folder</label>
+            <input type="file" id="photo-folder-input" accept="image/jpeg,image/jpg,image/png,image/webp" webkitdirectory hidden />
+          </div>
           <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each — Up to 20 photos</p>
         </div>
       </div>
@@ -240,8 +253,12 @@
         <div class="photo-upload-inner">
           <div class="upload-icon small">✍️</div>
           <p>Drag &amp; Drop signature image(s) here or</p>
-          <label class="btn btn-outline btn-sm" for="signature-file-input">Add Signatures</label>
-          <input type="file" id="signature-file-input" accept="image/jpeg,image/jpg,image/png" multiple hidden />
+          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
+            <label class="btn btn-outline btn-sm" for="signature-file-input">Add Signatures</label>
+            <input type="file" id="signature-file-input" accept="image/jpeg,image/jpg,image/png" multiple hidden />
+            <label class="btn btn-outline btn-sm" for="signature-folder-input">Upload Folder</label>
+            <input type="file" id="signature-folder-input" accept="image/jpeg,image/jpg,image/png" webkitdirectory hidden />
+          </div>
           <p class="upload-hint">PNG (transparent preferred) or JPG — Max 10 MB each</p>
         </div>
       </div>
@@ -264,8 +281,12 @@
         <div class="photo-upload-inner">
           <div class="upload-icon small">📰</div>
           <p>Drag &amp; Drop newspaper clipping(s) here or</p>
-          <label class="btn btn-outline btn-sm" for="newspaper-file-input">Add Clippings</label>
-          <input type="file" id="newspaper-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
+            <label class="btn btn-outline btn-sm" for="newspaper-file-input">Add Clippings</label>
+            <input type="file" id="newspaper-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+            <label class="btn btn-outline btn-sm" for="newspaper-folder-input">Upload Folder</label>
+            <input type="file" id="newspaper-folder-input" accept="image/jpeg,image/jpg,image/png,image/webp" webkitdirectory hidden />
+          </div>
           <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each</p>
         </div>
       </div>

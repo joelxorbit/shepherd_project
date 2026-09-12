@@ -205,6 +205,7 @@ function renderPlaceholderPanel(placeholders) {
 function initMultiImageZone(cfg) {
   const dropZone  = $(cfg.dropZoneId);
   const fileInput = $(cfg.fileInputId);
+  const folderInput = cfg.folderInputId ? $(cfg.folderInputId) : null;
   if (!dropZone || !fileInput) return;
 
   dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
@@ -218,6 +219,13 @@ function initMultiImageZone(cfg) {
     handleMultiImageFiles(Array.from(fileInput.files), cfg);
     fileInput.value = '';
   });
+  
+  if (folderInput) {
+    folderInput.addEventListener('change', () => {
+      handleMultiImageFiles(Array.from(folderInput.files), cfg);
+      folderInput.value = '';
+    });
+  }
 }
 
 async function handleMultiImageFiles(files, cfg) {
@@ -321,25 +329,25 @@ function reorderImageGrid(fromIdx, toIdx, cfg) {
 
 // Zone configs
 const PHOTO_CFG = {
-  dropZoneId: 'photo-drop-zone', fileInputId: 'photo-file-input',
+  dropZoneId: 'photo-drop-zone', fileInputId: 'photo-file-input', folderInputId: 'photo-folder-input',
   gridId: 'photo-grid', countInfoId: 'photo-count-info',
   stateIds: { files: 'photoFiles', previews: 'photoLocalPreviews' },
   maxFiles: 20, slotPrefix: 'PHOTO',
 };
 const INVITATION_CFG = {
-  dropZoneId: 'invitation-drop-zone', fileInputId: 'invitation-file-input',
+  dropZoneId: 'invitation-drop-zone', fileInputId: 'invitation-file-input', folderInputId: 'invitation-folder-input',
   gridId: 'invitation-grid', countInfoId: 'invitation-count-info',
   stateIds: { files: 'invitationFiles', previews: 'invitationLocalPreviews' },
   maxFiles: 10, slotPrefix: 'INVITATION',
 };
 const SIGNATURE_CFG = {
-  dropZoneId: 'signature-drop-zone', fileInputId: 'signature-file-input',
+  dropZoneId: 'signature-drop-zone', fileInputId: 'signature-file-input', folderInputId: 'signature-folder-input',
   gridId: 'signature-grid', countInfoId: 'signature-count-info',
   stateIds: { files: 'signatureFiles', previews: 'signatureLocalPreviews' },
   maxFiles: 10, slotPrefix: 'SIGNATURE',
 };
 const NEWSPAPER_CFG = {
-  dropZoneId: 'newspaper-drop-zone', fileInputId: 'newspaper-file-input',
+  dropZoneId: 'newspaper-drop-zone', fileInputId: 'newspaper-file-input', folderInputId: 'newspaper-folder-input',
   gridId: 'newspaper-grid', countInfoId: 'newspaper-count-info',
   stateIds: { files: 'newspaperFiles', previews: 'newspaperLocalPreviews' },
   maxFiles: 10, slotPrefix: 'NEWSPAPER',
