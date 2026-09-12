@@ -7,19 +7,14 @@ const cron = require('node-cron');
 const { cleanupOldFiles, getStorageDir } = require('./src/utils/fileUtils');
 
 const templateRoutes = require('./src/routes/templateRoutes');
-const uploadRoutes = require('./src/routes/uploadRoutes');
 const documentRoutes = require('./src/routes/documentRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Ensure directories exist ────────────────────────────────────────────────
+// ── Ensure directories exist (only for /tmp usage on local dev) ────────────────
 const dirs = [
   'generated/docx',
-  'uploads/templates',
-  'uploads/photos',
-  'uploads/signatures',
-  'uploads/newspapers',
 ];
 
 dirs.forEach((dir) => getStorageDir(dir));
@@ -32,7 +27,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/template', templateRoutes);
-app.use('/api', uploadRoutes);
 app.use('/api/document', documentRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
@@ -53,16 +47,6 @@ app.use((err, req, res, next) => {
     error: true,
     message: err.message || 'Internal server error',
   });
-});
-
-// ─── Scheduled cleanup: delete generated files older than TTL ─────────────────
-const ttl = parseInt(process.env.GENERATED_FILE_TTL) || 3600000;
-cron.schedule('*/30 * * * *', () => {
-  cleanupOldFiles(getStorageDir('generated/docx'), ttl);
-  cleanupOldFiles(getStorageDir('uploads/templates'), ttl);
-  cleanupOldFiles(getStorageDir('uploads/photos'), ttl * 4);
-  cleanupOldFiles(getStorageDir('uploads/signatures'), ttl * 4);
-  cleanupOldFiles(getStorageDir('uploads/newspapers'), ttl * 4);
 });
 
 app.listen(PORT, () => {

@@ -2,8 +2,25 @@ const express = require('express');
 const router = express.Router();
 const documentController = require('../controllers/documentController');
 
+const multer = require('multer');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // Allow up to 50MB total (Vercel payload limits will apply first)
+});
+
 // POST /api/document/generate
-router.post('/generate', documentController.generate);
+router.post(
+  '/generate',
+  upload.fields([
+    { name: 'template', maxCount: 1 },
+    { name: 'photos', maxCount: 20 },
+    { name: 'invitation', maxCount: 10 },
+    { name: 'signature', maxCount: 10 },
+    { name: 'newspaper', maxCount: 10 }
+  ]),
+  documentController.generate
+);
 
 // GET /api/document/:id/download/docx
 router.get('/:id/download/docx', documentController.downloadDocx);

@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { resizeImageToFit, getImageMetadata } = require('./imageProcessor');
 const { slugifyTitle, getStorageDir } = require('../utils/fileUtils');
 const docxConverter = require('docx-pdf');
+const { parseTemplateBuffer } = require('./templateParser');
 
 const GENERATED_DOCX_DIR = getStorageDir('generated/docx');
 
@@ -46,28 +47,26 @@ function htmlToPlainText(html) {
  *   Images : PHOTO_N, INVITATION_N, SIGNATURE_N, NEWSPAPER_N
  *
  * @param {object} params
- * @param {string}   params.templatePath        - .docx template file path
+ * @param {Buffer}   params.templateBuffer        - .docx template file buffer
  * @param {object}   params.textData            - { PLACEHOLDER_NAME: 'value', ... }
- * @param {string[]} params.photoFilePaths       - ordered event photo paths
- * @param {string[]} params.invitationFilePaths  - invitation image paths
- * @param {string[]} params.signatureFilePaths   - signature image paths (multiple)
- * @param {string[]} params.newspaperFilePaths   - newspaper clipping paths (multiple)
+ * @param {Buffer[]} params.photoBuffers       - ordered event photo buffers
+ * @param {Buffer[]} params.invitationBuffers  - invitation image buffers
+ * @param {Buffer[]} params.signatureBuffers   - signature image buffers (multiple)
+ * @param {Buffer[]} params.newspaperBuffers   - newspaper clipping buffers (multiple)
  * @param {string[]} params.objectives           - objective strings
  * @param {string[]} params.outcomes             - outcome strings
  * @param {string}   params.reportDescription    - HTML from Quill
  * @param {string}   params.eventTitle           - used for output filename
- * @param {object[]} params.placeholderManifest  - from templateParser
  */
 async function generateDocument(params) {
   const {
-    templatePath,
+    templateBuffer,
     textData = {},
-    photoFilePaths = [],
-    invitationFilePaths = [],
-    signatureFilePaths = [],
-    newspaperFilePaths = [],
+    photoBuffers = [],
+    invitationBuffers = [],
+    signatureBuffers = [],
+    newspaperBuffers = [],
     eventTitle = 'document',
-    placeholderManifest = [],
   } = params;
 
   const jobId = uuidv4();
@@ -75,9 +74,9 @@ async function generateDocument(params) {
   const outputFilename = `${slug}_${jobId.substring(0, 8)}.docx`;
   const outputPath = path.join(GENERATED_DOCX_DIR, outputFilename);
 
-  // ── 1. Load the template ───────────────────────────────────────────────────
-  const templateContent = fs.readFileSync(templatePath, 'binary');
-  const zip = new PizZip(templateContent);
+  // ── 1. Parse the template ───────────────────────────────────────────────────
+  const { placeholders: placeholderManifest } = await parseTemplateBuffer(templateBuffer);
+  const zip = new PizZip(templateBuffer);
 
   // ── 2. Build image buffer map ──────────────────────────────────────────────
   // key = placeholder name (e.g. PHOTO_1), value = Buffer
@@ -85,14 +84,14 @@ async function generateDocument(params) {
   const imageDimensions = {}; // store exact [width, height] for each tag
 
   // Helper: process image to fit within max display dimensions, keeping aspect ratio
-  async function processAndStoreImage(tagName, filePath, maxDisplayW, maxDisplayH) {
-    if (!filePath || !fs.existsSync(filePath)) return;
+  async function processAndStoreImage(tagName, buffer, maxDisplayW, maxDisplayH) {
+    if (!buffer) return;
     try {
       // Use 4x resolution for crisp printing, while keeping display size small
       const RESOLUTION = 4;
       
       const buf = await resizeImageToFit(
-        filePath,
+        buffer,
         Math.round(maxDisplayW * RESOLUTION),
         Math.round(maxDisplayH * RESOLUTION),
         { fit: 'inside' } // 'inside' preserves aspect ratio without adding transparent padding
@@ -110,23 +109,23 @@ async function generateDocument(params) {
       imageBuffers[tagName] = buf;
       imageDimensions[tagName] = [w, h];
     } catch (e) {
-      console.warn(`[IMAGE] Could not process ${tagName} (${filePath}):`, e.message);
+      console.warn(`[IMAGE] Could not process ${tagName}:`, e.message);
     }
   }
 
   // Event photos → PHOTO_1, PHOTO_2, …
-  for (let i = 0; i < photoFilePaths.length; i++) {
-    await processAndStoreImage(`PHOTO_${i + 1}`, photoFilePaths[i], 280, 180);
+  for (let i = 0; i < photoBuffers.length; i++) {
+    await processAndStoreImage(`PHOTO_${i + 1}`, photoBuffers[i], 280, 180);
   }
 
   // Invitation images → INVITATION_1, INVITATION_2, …
-  for (let i = 0; i < invitationFilePaths.length; i++) {
-    await processAndStoreImage(`INVITATION_${i + 1}`, invitationFilePaths[i], 550, 750);
+  for (let i = 0; i < invitationBuffers.length; i++) {
+    await processAndStoreImage(`INVITATION_${i + 1}`, invitationBuffers[i], 550, 750);
   }
 
   // Signatures → SIGNATURE_1, SIGNATURE_2, …  (also SIGNATURE as alias for first)
-  for (let i = 0; i < signatureFilePaths.length; i++) {
-    await processAndStoreImage(`SIGNATURE_${i + 1}`, signatureFilePaths[i], 200, 260);
+  for (let i = 0; i < signatureBuffers.length; i++) {
+    await processAndStoreImage(`SIGNATURE_${i + 1}`, signatureBuffers[i], 200, 260);
     if (i === 0) {
       imageBuffers['SIGNATURE'] = imageBuffers[`SIGNATURE_1`];
       imageDimensions['SIGNATURE'] = imageDimensions[`SIGNATURE_1`];
@@ -134,8 +133,8 @@ async function generateDocument(params) {
   }
 
   // Newspapers → NEWSPAPER_1, NEWSPAPER_2, …  (also NEWSPAPER_CLIPPING / NEWSPAPER as aliases)
-  for (let i = 0; i < newspaperFilePaths.length; i++) {
-    await processAndStoreImage(`NEWSPAPER_${i + 1}`, newspaperFilePaths[i], 550, 750);
+  for (let i = 0; i < newspaperBuffers.length; i++) {
+    await processAndStoreImage(`NEWSPAPER_${i + 1}`, newspaperBuffers[i], 550, 750);
     if (i === 0) {
       imageBuffers['NEWSPAPER_CLIPPING'] = imageBuffers[`NEWSPAPER_1`];
       imageBuffers['NEWSPAPER'] = imageBuffers[`NEWSPAPER_1`];
@@ -251,7 +250,7 @@ async function generateDocument(params) {
 
   fs.writeFileSync(outputPath, outputBuffer);
 
-  console.log(`[GENERATOR] Written: ${outputFilename} (${outputBuffer.length} bytes)`);
+  console.log(`[GENERATOR] Written DOCX to tmp: ${outputFilename} (${outputBuffer.length} bytes)`);
 
   // Convert to PDF
   const pdfFilename = `${slug}_${jobId.substring(0, 8)}.pdf`;
@@ -261,21 +260,28 @@ async function generateDocument(params) {
     docxConverter(outputPath, pdfPath, (err, result) => {
       if (err) {
         console.error('[PDF] Conversion failed:', err);
-        // Resolve anyway so the user at least gets the DOCX
         resolve(null);
       } else {
-        console.log(`[PDF] Written: ${pdfFilename}`);
+        console.log(`[PDF] Written PDF to tmp: ${pdfFilename}`);
         resolve(result);
       }
     });
   });
 
+  // Read files into base64
+  const docxBase64 = fs.readFileSync(outputPath, { encoding: 'base64' });
+  const pdfBase64 = fs.existsSync(pdfPath) ? fs.readFileSync(pdfPath, { encoding: 'base64' }) : null;
+
+  // Cleanup tmp files immediately to keep Vercel stateless environment clean
+  fs.unlinkSync(outputPath);
+  if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+
   return {
     jobId,
-    docxPath: outputPath,
-    pdfPath: fs.existsSync(pdfPath) ? pdfPath : null,
     filename: outputFilename,
-    pdfFilename
+    pdfFilename,
+    docxBase64,
+    pdfBase64
   };
 }
 

@@ -117,21 +117,21 @@ async function handleTemplateFile(file) {
     const formData = new FormData();
     formData.append('template', file);
 
-    const data = await fetch('/api/template/upload', { method: 'POST', body: formData })
+    const data = await fetch('/api/template/parse', { method: 'POST', body: formData })
       .then(async (r) => {
         const json = await r.json();
-        if (!r.ok) throw new Error(json.message || 'Upload failed');
+        if (!r.ok) throw new Error(json.message || 'Parse failed');
         return json;
       });
 
-    state.templateId = data.templateId;
-    state.templateFilename = data.filename;
+    state.templateFile = file; // Store the actual file for final generation
+    state.templateFilename = file.name;
     state.templatePlaceholders = data.placeholders || [];
 
     $('template-upload-status').textContent = '✓ Analyzed';
     $('template-upload-status').className = 'badge badge-success';
     setStatus('Template loaded', 'ready');
-    showToast(`Template uploaded — ${data.placeholders.length} placeholder(s) found.`, 'success');
+    showToast(`Template parsed — ${data.placeholders.length} placeholder(s) found.`, 'success');
 
     renderPlaceholderPanel(data.placeholders);
     updateCustomMappingSection(data.placeholders);
@@ -139,13 +139,13 @@ async function handleTemplateFile(file) {
   } catch (err) {
     $('template-upload-status').textContent = '✗ Error';
     $('template-upload-status').className = 'badge badge-danger';
-    setStatus('Upload failed', 'error');
+    setStatus('Parse failed', 'error');
     showToast(`Template error: ${err.message}`, 'error', 7000);
   }
 }
 
 function resetTemplate() {
-  state.templateId = null;
+  state.templateFile = null;
   state.templateFilename = null;
   state.templatePlaceholders = [];
   $('template-file-card').classList.add('hidden');
@@ -227,9 +227,9 @@ async function handleMultiImageFiles(files, cfg) {
     return;
   }
 
-  const fileIds   = state[cfg.stateIds.fileIds];
+  const filesArray = state[cfg.stateIds.files];
   const previews  = state[cfg.stateIds.previews];
-  const remaining = cfg.maxFiles - fileIds.length;
+  const remaining = cfg.maxFiles - filesArray.length;
   if (remaining <= 0) {
     showToast(`Maximum ${cfg.maxFiles} images allowed for this section.`, 'warning');
     return;
@@ -237,37 +237,21 @@ async function handleMultiImageFiles(files, cfg) {
 
   const toUpload = imageFiles.slice(0, remaining);
 
-  setStatus(`Uploading ${toUpload.length} image(s)...`, 'loading');
-  try {
-    const formData = new FormData();
-    toUpload.forEach((f) => formData.append(cfg.formFieldName, f));
+  toUpload.forEach((f) => {
+    const objectUrl = URL.createObjectURL(f);
+    filesArray.push(f);
+    previews.push({ objectUrl, name: f.name });
+  });
 
-    const data = await fetch(cfg.apiEndpoint, { method: 'POST', body: formData })
-      .then(async (r) => {
-        const json = await r.json();
-        if (!r.ok) throw new Error(json.message || 'Upload failed');
-        return json;
-      });
-
-    data.files.forEach((fileInfo, i) => {
-      const objectUrl = URL.createObjectURL(toUpload[i]);
-      fileIds.push(fileInfo.fileId);
-      previews.push({ fileId: fileInfo.fileId, objectUrl, name: fileInfo.originalName });
-    });
-
-    renderImageGrid(cfg);
-    setStatus('Images uploaded', 'ready');
-    updateSummary();
-  } catch (err) {
-    setStatus('Upload failed', 'error');
-    showToast(`Upload error: ${err.message}`, 'error');
-  }
+  renderImageGrid(cfg);
+  setStatus('Images added', 'ready');
+  updateSummary();
 }
 
 function renderImageGrid(cfg) {
   const grid     = $(cfg.gridId);
   const countEl  = $(cfg.countInfoId);
-  const fileIds  = state[cfg.stateIds.fileIds];
+  const filesArray = state[cfg.stateIds.files];
   const previews = state[cfg.stateIds.previews];
   if (!grid) return;
 
@@ -319,18 +303,18 @@ function renderImageGrid(cfg) {
 function removeImageFromGrid(idx, cfg) {
   const previews = state[cfg.stateIds.previews];
   URL.revokeObjectURL(previews[idx].objectUrl);
-  state[cfg.stateIds.fileIds].splice(idx, 1);
+  state[cfg.stateIds.files].splice(idx, 1);
   previews.splice(idx, 1);
   renderImageGrid(cfg);
   updateSummary();
 }
 
 function reorderImageGrid(fromIdx, toIdx, cfg) {
-  const ids  = state[cfg.stateIds.fileIds];
+  const arr  = state[cfg.stateIds.files];
   const prev = state[cfg.stateIds.previews];
-  const [idMoved]   = ids.splice(fromIdx, 1);
+  const [moved]     = arr.splice(fromIdx, 1);
   const [prevMoved] = prev.splice(fromIdx, 1);
-  ids.splice(toIdx, 0, idMoved);
+  arr.splice(toIdx, 0, moved);
   prev.splice(toIdx, 0, prevMoved);
   renderImageGrid(cfg);
 }
@@ -339,29 +323,25 @@ function reorderImageGrid(fromIdx, toIdx, cfg) {
 const PHOTO_CFG = {
   dropZoneId: 'photo-drop-zone', fileInputId: 'photo-file-input',
   gridId: 'photo-grid', countInfoId: 'photo-count-info',
-  stateIds: { fileIds: 'photoFileIds', previews: 'photoLocalPreviews' },
-  apiEndpoint: '/api/images/upload', formFieldName: 'photos',
+  stateIds: { files: 'photoFiles', previews: 'photoLocalPreviews' },
   maxFiles: 20, slotPrefix: 'PHOTO',
 };
 const INVITATION_CFG = {
   dropZoneId: 'invitation-drop-zone', fileInputId: 'invitation-file-input',
   gridId: 'invitation-grid', countInfoId: 'invitation-count-info',
-  stateIds: { fileIds: 'invitationFileIds', previews: 'invitationLocalPreviews' },
-  apiEndpoint: '/api/invitation/upload', formFieldName: 'invitation',
+  stateIds: { files: 'invitationFiles', previews: 'invitationLocalPreviews' },
   maxFiles: 10, slotPrefix: 'INVITATION',
 };
 const SIGNATURE_CFG = {
   dropZoneId: 'signature-drop-zone', fileInputId: 'signature-file-input',
   gridId: 'signature-grid', countInfoId: 'signature-count-info',
-  stateIds: { fileIds: 'signatureFileIds', previews: 'signatureLocalPreviews' },
-  apiEndpoint: '/api/signature/upload', formFieldName: 'signature',
+  stateIds: { files: 'signatureFiles', previews: 'signatureLocalPreviews' },
   maxFiles: 10, slotPrefix: 'SIGNATURE',
 };
 const NEWSPAPER_CFG = {
   dropZoneId: 'newspaper-drop-zone', fileInputId: 'newspaper-file-input',
   gridId: 'newspaper-grid', countInfoId: 'newspaper-count-info',
-  stateIds: { fileIds: 'newspaperFileIds', previews: 'newspaperLocalPreviews' },
-  apiEndpoint: '/api/newspaper/upload', formFieldName: 'newspaper',
+  stateIds: { files: 'newspaperFiles', previews: 'newspaperLocalPreviews' },
   maxFiles: 10, slotPrefix: 'NEWSPAPER',
 };
 
@@ -493,7 +473,7 @@ function updateSummary() {
   const list        = $('summary-list');
 
   const eventTitle  = $('field-event-title')?.value?.trim();
-  const hasTemplate = !!state.templateId;
+  const hasTemplate = !!state.templateFile;
 
   if (!hasTemplate && !eventTitle) {
     placeholder.classList.remove('hidden');
@@ -559,7 +539,7 @@ function initGenerateBtn() {
 }
 
 async function handleGenerate() {
-  if (!state.templateId) {
+  if (!state.templateFile) {
     showToast('Please upload a Word template first.', 'warning');
     $('section-template').scrollIntoView({ behavior: 'smooth' });
     return;
@@ -591,24 +571,23 @@ async function handleGenerate() {
   try {
     const reportHtml = state.quillEditor ? state.quillEditor.root.innerHTML : '';
 
-    const payload = {
-      templateId: state.templateId,
-      eventTitle,
-      reportTitle: $('field-report-title').value.trim(),
-      objectives: state.objectives.filter(Boolean),
-      reportDescription: reportHtml,
-      outcomes: state.outcomes.filter(Boolean),
-      photoFileIds:       state.photoFileIds,
-      invitationFileIds:  state.invitationFileIds,
-      signatureFileIds:   state.signatureFileIds,
-      newspaperFileIds:   state.newspaperFileIds,
-      customTextData: getCustomMappingData(),
-    };
+    const formData = new FormData();
+    formData.append('template', state.templateFile);
+    formData.append('eventTitle', eventTitle);
+    formData.append('reportTitle', $('field-report-title').value.trim());
+    formData.append('reportDescription', reportHtml);
+    formData.append('objectives', JSON.stringify(state.objectives.filter(Boolean)));
+    formData.append('outcomes', JSON.stringify(state.outcomes.filter(Boolean)));
+    formData.append('customTextData', JSON.stringify(getCustomMappingData()));
+
+    state.photoFiles.forEach((f) => formData.append('photos', f));
+    state.invitationFiles.forEach((f) => formData.append('invitation', f));
+    state.signatureFiles.forEach((f) => formData.append('signature', f));
+    state.newspaperFiles.forEach((f) => formData.append('newspaper', f));
 
     const data = await fetch('/api/document/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: formData,
     }).then(async (r) => {
       const json = await r.json();
       if (!r.ok) throw new Error(json.message || json.messages?.join('\n') || 'Generation failed');
@@ -620,7 +599,6 @@ async function handleGenerate() {
 
     await new Promise((resolve) => setTimeout(resolve, 600));
 
-    state.jobId = data.jobId;
     state.docxFilename = data.filename;
 
     showDownloadPanel(data);
@@ -654,16 +632,33 @@ function hideProgressPanel() {
   updateSummary();
 }
 
+function base64ToBlobUrl(base64, mimeType) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: mimeType });
+  return URL.createObjectURL(blob);
+}
+
 function showDownloadPanel(data) {
   $('progress-panel').classList.add('hidden');
   $('download-panel').classList.remove('hidden');
   $('download-filename').textContent = data.filename;
-  $('docx-download-btn').href = data.docxUrl;
+  
+  if (state.docxDownloadUrl) URL.revokeObjectURL(state.docxDownloadUrl);
+  if (state.pdfDownloadUrl) URL.revokeObjectURL(state.pdfDownloadUrl);
+
+  state.docxDownloadUrl = base64ToBlobUrl(data.docxBase64, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  $('docx-download-btn').href = state.docxDownloadUrl;
   $('docx-download-btn').download = data.filename;
 
   const pdfBtn = $('pdf-download-btn');
-  if (data.pdfUrl) {
-    pdfBtn.href = data.pdfUrl;
+  if (data.pdfBase64) {
+    state.pdfDownloadUrl = base64ToBlobUrl(data.pdfBase64, 'application/pdf');
+    pdfBtn.href = state.pdfDownloadUrl;
     pdfBtn.download = data.pdfFilename || data.filename.replace('.docx', '.pdf');
     pdfBtn.style.display = 'inline-flex';
   } else {
@@ -674,7 +669,6 @@ function showDownloadPanel(data) {
 function resetGenerationState() {
   $('download-panel').classList.add('hidden');
   $('generate-btn').disabled = false;
-  state.jobId = null;
   state.docxFilename = null;
   document.querySelectorAll('.progress-step').forEach((el) => { el.className = 'progress-step'; });
   updateSummary();

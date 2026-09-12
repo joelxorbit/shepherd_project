@@ -5,12 +5,16 @@ const { extractPlaceholders, buildPlaceholderManifest } = require('../utils/plac
 
 /**
  * Parse a .docx template file and extract all {{PLACEHOLDER}} tokens.
- *
- * @param {string} filePath - Absolute path to the .docx file
- * @returns {{ placeholders: Array, rawXml: string }}
  */
 async function parseTemplate(filePath) {
   const content = fs.readFileSync(filePath, 'binary');
+  return parseTemplateBuffer(content);
+}
+
+/**
+ * Parse a .docx template buffer
+ */
+async function parseTemplateBuffer(content) {
   const zip = new PizZip(content);
 
   // Read the main document XML
@@ -79,4 +83,4 @@ function validateDocxFile(filePath) {
   }
 }
 
-module.exports = { parseTemplate, validateDocxFile };
+module.exports = { parseTemplate, parseTemplateBuffer, validateDocxFile };
