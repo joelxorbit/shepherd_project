@@ -1,7 +1,6 @@
 const path = require('path');
 const fs = require('fs');
 const { generateDocument } = require('../services/documentGenerator');
-const { generateDocument } = require('../services/documentGenerator');
 const { validateGenerateRequest } = require('../utils/validation');
 
 /**
@@ -92,4 +91,21 @@ async function generate(req, res, next) {
   }
 }
 
-module.exports = { generate };
+async function downloadDocx(req, res, next) {
+  res.status(501).json({ message: 'Not implemented' });
+}
+
+async function downloadPdf(req, res, next) {
+  res.status(501).json({ message: 'Not implemented' });
+}
+
+async function getStatus(req, res, next) {
+  res.status(501).json({ message: 'Not implemented' });
+}
+
+module.exports = { 
+  generate, 
+  downloadDocx, 
+  downloadPdf, 
+  getStatus 
+};
