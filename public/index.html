@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Automation – Generate Professional Reports</title>
+  <meta name="description" content="Template-preserving document automation system. Upload a Word template, enter your content, and generate professionally formatted DOCX reports instantly." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Quill Rich Text Editor -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════ -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <polyline points="10 9 9 9 8 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">Document Automation</span>
+        <span class="brand-tagline">Template-Preserving Report Generator</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="status-pill" id="status-pill">
+        <span class="status-dot"></span>
+        <span class="status-text">Ready</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════
+     HERO SECTION
+═══════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <h1 class="hero-title">Generate Professionally<br/>Formatted Reports</h1>
+    <p class="hero-subtitle">Upload your Word template, enter your content, and let the automation engine create a pixel-perfect document that matches your template's design.</p>
+    <div class="hero-steps">
+      <div class="hero-step"><span class="step-num">1</span><span>Upload Template</span></div>
+      <div class="step-arrow">→</div>
+      <div class="hero-step"><span class="step-num">2</span><span>Enter Content</span></div>
+      <div class="step-arrow">→</div>
+      <div class="hero-step"><span class="step-num">3</span><span>Generate DOCX</span></div>
+      <div class="step-arrow">→</div>
+      <div class="hero-step"><span class="step-num">4</span><span>Download</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     MAIN LAYOUT
+═══════════════════════════════════════════════════ -->
+<main class="app-layout">
+
+  <!-- ─── LEFT: FORM PANEL ─────────────────────────────────────────────── -->
+  <div class="form-panel" id="form-panel">
+
+    <!-- ────────────────────────────────────────────
+         STEP 1: TEMPLATE UPLOAD
+    ──────────────────────────────────────────── -->
+    <section class="form-section" id="section-template">
+      <div class="section-header">
+        <div class="section-badge">Step 1</div>
+        <h2 class="section-title">Upload Word Template</h2>
+        <p class="section-desc">Your template defines the design. We'll insert your content into it.</p>
+      </div>
+
+      <div class="upload-zone" id="template-drop-zone" role="button" tabindex="0" aria-label="Upload Word template">
+        <div class="upload-zone-inner" id="template-zone-inner">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="upload-primary">Drag &amp; Drop your <strong>.docx</strong> template here</p>
+          <p class="upload-secondary">or</p>
+          <label class="btn btn-outline" for="template-file-input">Choose File</label>
+          <input type="file" id="template-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+          <p class="upload-hint">Accepts: .docx — Max 20 MB</p>
+        </div>
+      </div>
+
+      <!-- Template file info (shown after upload) -->
+      <div class="file-card hidden" id="template-file-card">
+        <div class="file-card-icon">📄</div>
+        <div class="file-card-info">
+          <span class="file-card-name" id="template-file-name"></span>
+          <span class="file-card-size" id="template-file-size"></span>
+        </div>
+        <div class="file-card-status">
+          <span class="badge badge-success" id="template-upload-status">Analyzing...</span>
+        </div>
+        <button class="icon-btn" id="template-remove-btn" title="Remove template" aria-label="Remove template">✕</button>
+      </div>
+
+      <!-- Placeholder analysis panel -->
+      <div class="analysis-panel hidden" id="placeholder-panel">
+        <div class="analysis-header">
+          <h3 class="analysis-title">
+            <span class="analysis-icon">🔍</span> Template Analysis
+          </h3>
+          <span class="badge badge-info" id="placeholder-count">0 placeholders</span>
+        </div>
+        <div class="placeholder-grid" id="placeholder-grid"></div>
+        <div class="analysis-warning hidden" id="no-placeholder-warning">
+          <p>⚠️ No supported placeholders detected in this template.</p>
+          <p>Add tokens like <code>{{EVENT_TITLE}}</code>, <code>{{REPORT}}</code>, <code>{{PHOTO_1}}</code> to your Word document and re-upload.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────
+         STEP 2: INVITATION
+    ──────────────────────────────────────────── -->
+    <section class="form-section" id="section-invitation">
+      <div class="section-header">
+        <div class="section-badge">Step 2</div>
+        <h2 class="section-title">Invitation</h2>
+        <p class="section-desc">Upload invitation image(s). They will fill <code>{{INVITATION_1}}</code>, <code>{{INVITATION_2}}</code>, etc. in your template.</p>
+      </div>
+
+      <!-- Event Title (kept — essential for filename) -->
+      <div class="form-group" style="margin-bottom:18px;">
+        <label class="form-label" for="field-event-title">Event Title <span class="required">*</span></label>
+        <input type="text" id="field-event-title" class="form-input" placeholder="e.g. ORIENTATION ON HEALTH ACTIVITIES FOR II UG STUDENTS" data-placeholder="EVENT_TITLE" />
+        <span class="field-hint">Maps to <code>{{EVENT_TITLE}}</code></span>
+      </div>
+
+      <!-- Invitation Images -->
+      <div class="photo-upload-area" id="invitation-drop-zone">
+        <div class="photo-upload-inner">
+          <div class="upload-icon small">📩</div>
+          <p>Drag &amp; Drop invitation image(s) here or</p>
+          <label class="btn btn-outline btn-sm" for="invitation-file-input">Add Images</label>
+          <input type="file" id="invitation-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+          <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each — Maps to <code>{{INVITATION_1}}</code>, <code>{{INVITATION_2}}</code>…</p>
+        </div>
+      </div>
+      <div class="photo-grid" id="invitation-grid"></div>
+      <div class="photo-count-info hidden" id="invitation-count-info"></div>
+    </section>
+
+    <!-- ────────────────────────────────────────────
+         STEP 3: REPORT DETAILS
+    ──────────────────────────────────────────── -->
+    <section class="form-section" id="section-report">
+      <div class="section-header">
+        <div class="section-badge">Step 3</div>
+        <h2 class="section-title">Report Details</h2>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="field-report-title">Report Title</label>
+        <input type="text" id="field-report-title" class="form-input" placeholder="e.g. Report on Health Orientation Programme" data-placeholder="REPORT_TITLE" />
+        <span class="field-hint">Maps to <code>{{REPORT_TITLE}}</code></span>
+      </div>
+
+      <!-- Objectives List -->
+      <div class="form-group">
+        <label class="form-label">Objectives</label>
+        <span class="field-hint">Maps to <code>{{OBJECTIVES}}</code></span>
+        <div class="dynamic-list" id="objectives-list">
+          <div class="list-empty-state" id="objectives-empty">No objectives added yet. Click "+ Add Objective" below.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="add-objective-btn" type="button">
+          <span>+</span> Add Objective
+        </button>
+      </div>
+
+      <!-- Report Description – Rich Text -->
+      <div class="form-group">
+        <label class="form-label">Report Description</label>
+        <span class="field-hint">Maps to <code>{{REPORT}}</code> — supports <strong>bold</strong> and <em>italic</em> formatting</span>
+        <div class="quill-wrapper">
+          <div id="report-editor"></div>
+        </div>
+      </div>
+
+      <!-- Outcome List -->
+      <div class="form-group">
+        <label class="form-label">Outcome</label>
+        <span class="field-hint">Maps to <code>{{OUTCOME}}</code></span>
+        <div class="dynamic-list" id="outcomes-list">
+          <div class="list-empty-state" id="outcomes-empty">No outcomes added yet. Click "+ Add Outcome" below.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="add-outcome-btn" type="button">
+          <span>+</span> Add Outcome
+        </button>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────
+         STEP 4: PHOTOS
+    ──────────────────────────────────────────── -->
+    <section class="form-section" id="section-photos">
+      <div class="section-header">
+        <div class="section-badge">Step 4</div>
+        <h2 class="section-title">Photos</h2>
+        <p class="section-desc">Uploaded photos fill <code>{{PHOTO_1}}</code>, <code>{{PHOTO_2}}</code>, etc. in order. Drag to reorder.</p>
+      </div>
+
+      <div class="photo-upload-area" id="photo-drop-zone">
+        <div class="photo-upload-inner">
+          <div class="upload-icon small">📷</div>
+          <p>Drag &amp; Drop photos here or</p>
+          <label class="btn btn-outline btn-sm" for="photo-file-input">Add Photos</label>
+          <input type="file" id="photo-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+          <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each — Up to 20 photos</p>
+        </div>
+      </div>
+
+      <div class="photo-grid" id="photo-grid"></div>
+      <div class="photo-count-info hidden" id="photo-count-info"></div>
+    </section>
+
+    <!-- ────────────────────────────────────────────
+         STEP 5: SIGNATURE (multiple)
+    ──────────────────────────────────────────── -->
+    <section class="form-section" id="section-signature">
+      <div class="section-header">
+        <div class="section-badge">Step 5</div>
+        <h2 class="section-title">Signature</h2>
+        <p class="section-desc">Upload one or more signature images. They map to <code>{{SIGNATURE_1}}</code>, <code>{{SIGNATURE_2}}</code>, etc. Transparent PNG preferred.</p>
+      </div>
+
+      <div class="photo-upload-area" id="signature-drop-zone">
+        <div class="photo-upload-inner">
+          <div class="upload-icon small">✍️</div>
+          <p>Drag &amp; Drop signature image(s) here or</p>
+          <label class="btn btn-outline btn-sm" for="signature-file-input">Add Signatures</label>
+          <input type="file" id="signature-file-input" accept="image/jpeg,image/jpg,image/png" multiple hidden />
+          <p class="upload-hint">PNG (transparent preferred) or JPG — Max 10 MB each</p>
+        </div>
+      </div>
+
+      <div class="photo-grid" id="signature-grid"></div>
+      <div class="photo-count-info hidden" id="signature-count-info"></div>
+    </section>
+
+    <!-- ────────────────────────────────────────────
+         STEP 6: NEWSPAPER CLIPPING (multiple)
+    ──────────────────────────────────────────── -->
+    <section class="form-section" id="section-newspaper">
+      <div class="section-header">
+        <div class="section-badge">Step 6</div>
+        <h2 class="section-title">Newspaper Clipping</h2>
+        <p class="section-desc">Upload one or more newspaper clipping images. They map to <code>{{NEWSPAPER_1}}</code>, <code>{{NEWSPAPER_2}}</code>, etc.</p>
+      </div>
+
+      <div class="photo-upload-area" id="newspaper-drop-zone">
+        <div class="photo-upload-inner">
+          <div class="upload-icon small">📰</div>
+          <p>Drag &amp; Drop newspaper clipping(s) here or</p>
+          <label class="btn btn-outline btn-sm" for="newspaper-file-input">Add Clippings</label>
+          <input type="file" id="newspaper-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+          <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each</p>
+        </div>
+      </div>
+
+      <div class="photo-grid" id="newspaper-grid"></div>
+      <div class="photo-count-info hidden" id="newspaper-count-info"></div>
+    </section>
+
+    <!-- ────────────────────────────────────────────
+         CUSTOM PLACEHOLDER MAPPING
+    ──────────────────────────────────────────── -->
+    <section class="form-section" id="section-mapping">
+      <div class="section-header">
+        <div class="section-badge">Advanced</div>
+        <h2 class="section-title">Custom Placeholder Values</h2>
+        <p class="section-desc">Map any additional <code>{{PLACEHOLDER}}</code> found in your template to custom values.</p>
+      </div>
+      <div id="custom-mapping-list" class="custom-mapping-list">
+        <p class="text-muted" id="custom-mapping-empty">Upload a template to see unmapped placeholders here.</p>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────
+         GENERATE BUTTON
+    ──────────────────────────────────────────── -->
+    <section class="generate-section" id="section-generate">
+      <div class="generate-inner">
+        <button class="btn btn-primary btn-xl" id="generate-btn" type="button">
+          <span class="btn-icon">⚡</span>
+          Generate Document
+        </button>
+        <p class="generate-hint">Your Word template's design will be preserved exactly.</p>
+      </div>
+    </section>
+
+  </div><!-- /form-panel -->
+
+  <!-- ─── RIGHT: PREVIEW / STATUS PANEL ───────────────────────────────────── -->
+  <div class="preview-panel" id="preview-panel">
+
+    <div class="preview-sticky">
+
+      <!-- Initial state -->
+      <div class="preview-placeholder" id="preview-placeholder">
+        <div class="preview-placeholder-icon">📋</div>
+        <h3>Document Preview</h3>
+        <p>Upload a template and fill in your content to see a summary here.</p>
+      </div>
+
+      <!-- Content summary -->
+      <div class="content-summary hidden" id="content-summary">
+        <h3 class="summary-title">Content Summary</h3>
+        <ul class="summary-list" id="summary-list"></ul>
+      </div>
+
+      <!-- Progress panel -->
+      <div class="progress-panel hidden" id="progress-panel">
+        <div class="progress-header">
+          <div class="progress-spinner"></div>
+          <h3>Generating Document...</h3>
+        </div>
+        <ul class="progress-steps" id="progress-steps">
+          <li class="progress-step" data-step="template">Validating template</li>
+          <li class="progress-step" data-step="text">Inserting content</li>
+          <li class="progress-step" data-step="invitation">Processing invitation images</li>
+          <li class="progress-step" data-step="images">Processing photos</li>
+          <li class="progress-step" data-step="signature">Adding signatures</li>
+          <li class="progress-step" data-step="newspaper">Adding newspaper clippings</li>
+          <li class="progress-step" data-step="formatting">Preserving formatting</li>
+          <li class="progress-step" data-step="docx">Creating Word document</li>
+        </ul>
+      </div>
+
+      <!-- Download panel -->
+      <div class="download-panel hidden" id="download-panel">
+        <div class="download-success-icon">✅</div>
+        <h3 class="download-title">Your document is ready!</h3>
+        <p class="download-filename" id="download-filename"></p>
+        <div class="download-btns" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <a class="btn btn-primary btn-download" id="docx-download-btn" href="#" download>
+            <span>📄</span> Download Word Document
+          </a>
+          <a class="btn btn-primary btn-download" id="pdf-download-btn" href="#" download style="display: none; background: #e74c3c; border-color: #c0392b;">
+            <span>📄</span> Download PDF
+          </a>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="generate-another-btn" type="button" style="margin-top: 15px;">Generate Another Document</button>
+      </div>
+
+    </div>
+  </div><!-- /preview-panel -->
+
+</main>
+
+<!-- Toast -->
+<div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+<!-- Quill -->
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<!-- App -->
+<script src="/js/app.js"></script>
+
+</body>
+</html>
