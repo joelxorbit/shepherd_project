@@ -44,8 +44,7 @@ async function parseTemplateBuffer(content) {
 
   return {
     placeholders: manifest,
-    rawXml: documentXml,
-    templatePath: filePath,
+    rawXml: documentXml
   };
 }
 

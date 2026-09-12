@@ -11,19 +11,19 @@ const state = {
   templatePlaceholders: [],
 
   // Event photos
-  photoFileIds: [],
+  photoFiles: [],
   photoLocalPreviews: [],     // { fileId, objectUrl, name }
 
   // Invitation images
-  invitationFileIds: [],
+  invitationFiles: [],
   invitationLocalPreviews: [],
 
   // Signatures (multiple)
-  signatureFileIds: [],
+  signatureFiles: [],
   signatureLocalPreviews: [],
 
   // Newspaper clippings (multiple)
-  newspaperFileIds: [],
+  newspaperFiles: [],
   newspaperLocalPreviews: [],
 
   quillEditor: null,

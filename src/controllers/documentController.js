@@ -41,8 +41,6 @@ async function generate(req, res, next) {
       console.warn("Failed to parse JSON fields from FormData", e);
     }
 
-    // For event photos: respect template slot count
-    const photoPlaceholders = template.placeholders.filter((p) => p.name.match(/^PHOTO_\d+$/));
     // ── Build text data map ───────────────────────────────────────────────────
     const textData = {
       EVENT_TITLE:  body.eventTitle  || '',
