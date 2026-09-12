@@ -1051,6 +1051,23 @@ a:hover { text-decoration: underline; }
   .form-section { padding: 20px; }
 }
 
+@media (max-width: 768px) {
+  .header-inner {
+    height: auto;
+    flex-direction: column;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: center;
+    gap: 20px !important;
+  }
+  .hero-title {
+    font-size: clamp(1.4rem, 6vw, 2.2rem);
+  }
+}
+
 @media (max-width: 480px) {
   .hero-steps { display: none; }
   .form-grid { grid-template-columns: 1fr; }
