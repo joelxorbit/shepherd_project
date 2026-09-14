@@ -297,8 +297,16 @@ async function handleGenerate() {
   }
 
   showProgressPanel();
-  $('generate-btn').disabled = true;
+  
+  // Use pointer-events instead of the 'disabled' attribute to prevent browser scroll jumps on focus loss
+  const genBtn = $('generate-btn');
+  genBtn.style.pointerEvents = 'none';
+  genBtn.style.opacity = '0.6';
+  
   setStatus('Generating document...', 'loading');
+
+  // Smoothly scroll to the progress/preview panel so the user can see the status, especially on mobile
+  $('preview-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
     const formData = new FormData();
@@ -334,7 +342,9 @@ async function handleGenerate() {
     showToast('Document generated successfully!', 'success');
   } catch (err) {
     hideProgressPanel();
-    $('generate-btn').disabled = false;
+    const genBtn = $('generate-btn');
+    genBtn.style.pointerEvents = 'auto';
+    genBtn.style.opacity = '1';
     setStatus('Generation failed', 'error');
     showToast(`Generation error: ${err.message}`, 'error', 8000);
   }
@@ -388,7 +398,9 @@ function showDownloadPanel(data) {
 
 function resetGenerationState() {
   $('download-panel').classList.add('hidden');
-  $('generate-btn').disabled = false;
+  const genBtn = $('generate-btn');
+  genBtn.style.pointerEvents = 'auto';
+  genBtn.style.opacity = '1';
   updateSummary();
   setStatus('Ready', 'ready');
 }
