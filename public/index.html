@@ -67,249 +67,45 @@
   <div class="form-panel" id="form-panel">
 
     <!-- ────────────────────────────────────────────
-         STEP 1: TEMPLATE UPLOAD
+         STEP 1: SELECT TEMPLATE
     ──────────────────────────────────────────── -->
-    <section class="form-section" id="section-template">
+    <section class="form-section" id="section-template-select">
       <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
         <div>
           <div class="section-badge">Step 1</div>
-          <h2 class="section-title">Upload Word Template</h2>
-          <p class="section-desc">Your template defines the design. We'll insert your content into it.</p>
+          <h2 class="section-title">Select Template</h2>
+          <p class="section-desc">Choose a pre-configured template to get started.</p>
         </div>
-        <a href="/template.docx" download="shepherd_template.docx" class="btn btn-outline btn-sm" title="Download the sample template to see how it works">
+        <a id="download-sample-btn" href="#" class="btn btn-outline btn-sm hidden" title="Download the sample template to see how it works" download>
           📄 Download Sample
         </a>
       </div>
 
-      <div class="upload-zone" id="template-drop-zone" role="button" tabindex="0" aria-label="Upload Word template">
-        <div class="upload-zone-inner" id="template-zone-inner">
-          <div class="upload-icon">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <p class="upload-primary">Drag &amp; Drop your <strong>.docx</strong> template here</p>
-          <p class="upload-secondary">or</p>
-          <label class="btn btn-outline" for="template-file-input">Choose File</label>
-          <input type="file" id="template-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
-          <p class="upload-hint">Accepts: .docx — Max 20 MB</p>
-        </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <select id="template-select" class="form-input" style="padding: 12px;">
+          <option value="" disabled selected>Loading templates...</option>
+        </select>
       </div>
-
-      <!-- Template file info (shown after upload) -->
-      <div class="file-card hidden" id="template-file-card">
+      
+      <!-- Template Info Card -->
+      <div class="file-card hidden" id="template-info-card" style="margin-top: 15px;">
         <div class="file-card-icon">📄</div>
         <div class="file-card-info">
-          <span class="file-card-name" id="template-file-name"></span>
-          <span class="file-card-size" id="template-file-size"></span>
+          <span class="file-card-name" id="selected-template-name"></span>
+          <span class="file-card-size" id="selected-template-desc" style="color: var(--color-text-light); font-size: 0.85rem;"></span>
         </div>
         <div class="file-card-status">
-          <span class="badge badge-success" id="template-upload-status">Analyzing...</span>
-        </div>
-        <button class="icon-btn" id="template-remove-btn" title="Remove template" aria-label="Remove template">✕</button>
-      </div>
-
-      <!-- Placeholder analysis panel -->
-      <div class="analysis-panel hidden" id="placeholder-panel">
-        <div class="analysis-header">
-          <h3 class="analysis-title">
-            <span class="analysis-icon">🔍</span> Template Analysis
-          </h3>
-          <span class="badge badge-info" id="placeholder-count">0 placeholders</span>
-        </div>
-        <div class="placeholder-grid" id="placeholder-grid"></div>
-        <div class="analysis-warning hidden" id="no-placeholder-warning">
-          <p>⚠️ No supported placeholders detected in this template.</p>
-          <p>Add tokens like <code>{{EVENT_TITLE}}</code>, <code>{{REPORT}}</code>, <code>{{PHOTO_1}}</code> to your Word document and re-upload.</p>
+          <span class="badge badge-success">Selected</span>
         </div>
       </div>
     </section>
 
     <!-- ────────────────────────────────────────────
-         STEP 2: INVITATION
+         DYNAMIC STEPS CONTAINER
     ──────────────────────────────────────────── -->
-    <section class="form-section" id="section-invitation">
-      <div class="section-header">
-        <div class="section-badge">Step 2</div>
-        <h2 class="section-title">Invitation</h2>
-        <p class="section-desc">Upload invitation image(s). They will fill <code>{{INVITATION_1}}</code>, <code>{{INVITATION_2}}</code>, etc. in your template.</p>
-      </div>
-
-      <!-- Event Title (kept — essential for filename) -->
-      <div class="form-group" style="margin-bottom:18px;">
-        <label class="form-label" for="field-event-title">Event Title <span class="required">*</span></label>
-        <input type="text" id="field-event-title" class="form-input" placeholder="e.g. ORIENTATION ON HEALTH ACTIVITIES FOR II UG STUDENTS" data-placeholder="EVENT_TITLE" />
-        <span class="field-hint">Maps to <code>{{EVENT_TITLE}}</code></span>
-      </div>
-
-      <!-- Invitation Images -->
-      <div class="photo-upload-area" id="invitation-drop-zone">
-        <div class="photo-upload-inner">
-          <div class="upload-icon small">📩</div>
-          <p>Drag &amp; Drop invitation image(s) here or</p>
-          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
-            <label class="btn btn-outline btn-sm" for="invitation-file-input">Add Images</label>
-            <input type="file" id="invitation-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
-            <label class="btn btn-outline btn-sm" for="invitation-folder-input">Upload Folder</label>
-            <input type="file" id="invitation-folder-input" accept="image/jpeg,image/jpg,image/png,image/webp" webkitdirectory hidden />
-          </div>
-          <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each — Maps to <code>{{INVITATION_1}}</code>, <code>{{INVITATION_2}}</code>…</p>
-        </div>
-      </div>
-      <div class="photo-grid" id="invitation-grid"></div>
-      <div class="photo-count-info hidden" id="invitation-count-info"></div>
-    </section>
-
-    <!-- ────────────────────────────────────────────
-         STEP 3: REPORT DETAILS
-    ──────────────────────────────────────────── -->
-    <section class="form-section" id="section-report">
-      <div class="section-header">
-        <div class="section-badge">Step 3</div>
-        <h2 class="section-title">Report Details</h2>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="field-report-title">Report Title</label>
-        <input type="text" id="field-report-title" class="form-input" placeholder="e.g. Report on Health Orientation Programme" data-placeholder="REPORT_TITLE" />
-        <span class="field-hint">Maps to <code>{{REPORT_TITLE}}</code></span>
-      </div>
-
-      <!-- Objectives List -->
-      <div class="form-group">
-        <label class="form-label">Objectives</label>
-        <span class="field-hint">Maps to <code>{{OBJECTIVES}}</code></span>
-        <div class="dynamic-list" id="objectives-list">
-          <div class="list-empty-state" id="objectives-empty">No objectives added yet. Click "+ Add Objective" below.</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="add-objective-btn" type="button">
-          <span>+</span> Add Objective
-        </button>
-      </div>
-
-      <!-- Report Description – Rich Text -->
-      <div class="form-group">
-        <label class="form-label">Report Description</label>
-        <span class="field-hint">Maps to <code>{{REPORT}}</code> — supports <strong>bold</strong> and <em>italic</em> formatting</span>
-        <div class="quill-wrapper">
-          <div id="report-editor"></div>
-        </div>
-      </div>
-
-      <!-- Outcome List -->
-      <div class="form-group">
-        <label class="form-label">Outcome</label>
-        <span class="field-hint">Maps to <code>{{OUTCOME}}</code></span>
-        <div class="dynamic-list" id="outcomes-list">
-          <div class="list-empty-state" id="outcomes-empty">No outcomes added yet. Click "+ Add Outcome" below.</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="add-outcome-btn" type="button">
-          <span>+</span> Add Outcome
-        </button>
-      </div>
-    </section>
-
-    <!-- ────────────────────────────────────────────
-         STEP 4: PHOTOS
-    ──────────────────────────────────────────── -->
-    <section class="form-section" id="section-photos">
-      <div class="section-header">
-        <div class="section-badge">Step 4</div>
-        <h2 class="section-title">Photos</h2>
-        <p class="section-desc">Uploaded photos fill <code>{{PHOTO_1}}</code>, <code>{{PHOTO_2}}</code>, etc. in order. Drag to reorder.</p>
-      </div>
-
-      <div class="photo-upload-area" id="photo-drop-zone">
-        <div class="photo-upload-inner">
-          <div class="upload-icon small">📷</div>
-          <p>Drag &amp; Drop photos here or</p>
-          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
-            <label class="btn btn-outline btn-sm" for="photo-file-input">Add Photos</label>
-            <input type="file" id="photo-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
-            <label class="btn btn-outline btn-sm" for="photo-folder-input">Upload Folder</label>
-            <input type="file" id="photo-folder-input" accept="image/jpeg,image/jpg,image/png,image/webp" webkitdirectory hidden />
-          </div>
-          <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each — Up to 20 photos</p>
-        </div>
-      </div>
-
-      <div class="photo-grid" id="photo-grid"></div>
-      <div class="photo-count-info hidden" id="photo-count-info"></div>
-    </section>
-
-    <!-- ────────────────────────────────────────────
-         STEP 5: SIGNATURE (multiple)
-    ──────────────────────────────────────────── -->
-    <section class="form-section" id="section-signature">
-      <div class="section-header">
-        <div class="section-badge">Step 5</div>
-        <h2 class="section-title">Signature</h2>
-        <p class="section-desc">Upload one or more signature images. They map to <code>{{SIGNATURE_1}}</code>, <code>{{SIGNATURE_2}}</code>, etc. Transparent PNG preferred.</p>
-      </div>
-
-      <div class="photo-upload-area" id="signature-drop-zone">
-        <div class="photo-upload-inner">
-          <div class="upload-icon small">✍️</div>
-          <p>Drag &amp; Drop signature image(s) here or</p>
-          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
-            <label class="btn btn-outline btn-sm" for="signature-file-input">Add Signatures</label>
-            <input type="file" id="signature-file-input" accept="image/jpeg,image/jpg,image/png" multiple hidden />
-            <label class="btn btn-outline btn-sm" for="signature-folder-input">Upload Folder</label>
-            <input type="file" id="signature-folder-input" accept="image/jpeg,image/jpg,image/png" webkitdirectory hidden />
-          </div>
-          <p class="upload-hint">PNG (transparent preferred) or JPG — Max 10 MB each</p>
-        </div>
-      </div>
-
-      <div class="photo-grid" id="signature-grid"></div>
-      <div class="photo-count-info hidden" id="signature-count-info"></div>
-    </section>
-
-    <!-- ────────────────────────────────────────────
-         STEP 6: NEWSPAPER CLIPPING (multiple)
-    ──────────────────────────────────────────── -->
-    <section class="form-section" id="section-newspaper">
-      <div class="section-header">
-        <div class="section-badge">Step 6</div>
-        <h2 class="section-title">Newspaper Clipping</h2>
-        <p class="section-desc">Upload one or more newspaper clipping images. They map to <code>{{NEWSPAPER_1}}</code>, <code>{{NEWSPAPER_2}}</code>, etc.</p>
-      </div>
-
-      <div class="photo-upload-area" id="newspaper-drop-zone">
-        <div class="photo-upload-inner">
-          <div class="upload-icon small">📰</div>
-          <p>Drag &amp; Drop newspaper clipping(s) here or</p>
-          <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
-            <label class="btn btn-outline btn-sm" for="newspaper-file-input">Add Clippings</label>
-            <input type="file" id="newspaper-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
-            <label class="btn btn-outline btn-sm" for="newspaper-folder-input">Upload Folder</label>
-            <input type="file" id="newspaper-folder-input" accept="image/jpeg,image/jpg,image/png,image/webp" webkitdirectory hidden />
-          </div>
-          <p class="upload-hint">JPG, PNG, WebP — Max 10 MB each</p>
-        </div>
-      </div>
-
-      <div class="photo-grid" id="newspaper-grid"></div>
-      <div class="photo-count-info hidden" id="newspaper-count-info"></div>
-    </section>
-
-    <!-- ────────────────────────────────────────────
-         CUSTOM PLACEHOLDER MAPPING
-    ──────────────────────────────────────────── -->
-    <section class="form-section" id="section-mapping">
-      <div class="section-header">
-        <div class="section-badge">Advanced</div>
-        <h2 class="section-title">Custom Placeholder Values</h2>
-        <p class="section-desc">Map any additional <code>{{PLACEHOLDER}}</code> found in your template to custom values.</p>
-      </div>
-      <div id="custom-mapping-list" class="custom-mapping-list">
-        <p class="text-muted" id="custom-mapping-empty">Upload a template to see unmapped placeholders here.</p>
-      </div>
-    </section>
-
-    <!-- Generate button has been moved to the top header -->>
+    <div id="dynamic-steps-container">
+      <!-- Steps will be injected here via app.js -->
+    </div>
 
   </div><!-- /form-panel -->
 

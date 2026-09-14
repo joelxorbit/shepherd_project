@@ -9,17 +9,11 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // Allow up to 50MB total (Vercel payload limits will apply first)
 });
 
-// POST /api/document/generate
+// POST /api/document/generate-dynamic
 router.post(
-  '/generate',
-  upload.fields([
-    { name: 'template', maxCount: 1 },
-    { name: 'photos', maxCount: 20 },
-    { name: 'invitation', maxCount: 10 },
-    { name: 'signature', maxCount: 10 },
-    { name: 'newspaper', maxCount: 10 }
-  ]),
-  documentController.generate
+  '/generate-dynamic',
+  upload.any(),
+  documentController.generateDynamic
 );
 
 // GET /api/document/:id/download/docx

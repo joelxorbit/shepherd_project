@@ -1,66 +1,57 @@
 const path = require('path');
 const fs = require('fs');
 const { generateDocument } = require('../services/documentGenerator');
-const { validateGenerateRequest } = require('../utils/validation');
+const TemplateConfig = require('../models/TemplateConfig');
 
 /**
- * POST /api/document/generate
+ * POST /api/document/generate-dynamic
  * Expects multipart/form-data
  */
-async function generate(req, res, next) {
+async function generateDynamic(req, res, next) {
   try {
-    const body = req.body;
+    const { templateId, dynamicTextData } = req.body;
     
-    if (!req.files || !req.files.template || !req.files.template[0]) {
-      return res.status(400).json({ error: true, message: 'Template file is required.' });
+    if (!templateId) {
+      return res.status(400).json({ error: true, message: 'templateId is required.' });
     }
 
-    // Helper to get buffers
-    const getBuffers = (fieldname) => {
-      if (req.files[fieldname]) {
-        return req.files[fieldname].map(f => f.buffer);
-      }
-      return [];
-    };
+    const templateConfig = await TemplateConfig.findById(templateId);
+    if (!templateConfig || !templateConfig.templateFileUrl) {
+      return res.status(400).json({ error: true, message: 'Template not found or has no uploaded .docx file.' });
+    }
 
-    const templateBuffer = req.files.template[0].buffer;
-    const photoBuffers = getBuffers('photos');
-    const invitationBuffers = getBuffers('invitation');
-    const signatureBuffers = getBuffers('signature');
-    const newspaperBuffers = getBuffers('newspaper');
+    // Read the template .docx file from disk
+    const templatePath = path.join(__dirname, '../../', templateConfig.templateFileUrl);
+    if (!fs.existsSync(templatePath)) {
+      return res.status(500).json({ error: true, message: 'Template file is missing on the server.' });
+    }
+    const templateBuffer = fs.readFileSync(templatePath);
 
-    // Parse array fields that were sent as JSON strings in FormData
-    let objectives = [];
-    let outcomes = [];
-    let customTextData = {};
+    // Group req.files into dynamicImageBuffers
+    const dynamicImageBuffers = {};
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (!dynamicImageBuffers[file.fieldname]) {
+          dynamicImageBuffers[file.fieldname] = [];
+        }
+        dynamicImageBuffers[file.fieldname].push(file.buffer);
+      });
+    }
+
+    let parsedTextData = {};
     try {
-      if (body.objectives) objectives = JSON.parse(body.objectives);
-      if (body.outcomes) outcomes = JSON.parse(body.outcomes);
-      if (body.customTextData) customTextData = JSON.parse(body.customTextData);
+      if (dynamicTextData) parsedTextData = JSON.parse(dynamicTextData);
     } catch (e) {
-      console.warn("Failed to parse JSON fields from FormData", e);
+      console.warn("Failed to parse dynamicTextData", e);
     }
 
-    // ── Build text data map ───────────────────────────────────────────────────
-    const textData = {
-      EVENT_TITLE:  body.eventTitle  || '',
-      REPORT_TITLE: body.reportTitle || body.eventTitle || '',
-      ...customTextData,
-    };
-
-    console.log(`[GENERATE] Starting all-in-one generation...`);
+    console.log(`[GENERATE] Starting dynamic generation for ${templateConfig.templateName}...`);
 
     const result = await generateDocument({
       templateBuffer,
-      textData,
-      photoBuffers,
-      invitationBuffers,
-      signatureBuffers,
-      newspaperBuffers,
-      objectives,
-      outcomes,
-      reportDescription: body.reportDescription || '',
-      eventTitle: body.eventTitle || body.reportTitle || 'document',
+      dynamicTextData: parsedTextData,
+      dynamicImageBuffers,
+      eventTitle: parsedTextData.EVENT_TITLE || parsedTextData.REPORT_TITLE || templateConfig.templateName,
     });
 
     console.log(`[GENERATE] Complete: ${result.filename}`);
@@ -102,7 +93,7 @@ async function getStatus(req, res, next) {
 }
 
 module.exports = { 
-  generate, 
+  generateDynamic, 
   downloadDocx, 
   downloadPdf, 
   getStatus 

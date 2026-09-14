@@ -1,74 +1,37 @@
-/* ═══════════════════════════════════════════════════════════
-   Document Automation – Frontend Application
-   ═══════════════════════════════════════════════════════════ */
-
 'use strict';
 
-// ─── Application State ───────────────────────────────────────
 const state = {
-  templateId: null,
-  templateFilename: null,
-  templatePlaceholders: [],
-
-  // Event photos
-  photoFiles: [],
-  photoLocalPreviews: [],     // { fileId, objectUrl, name }
-
-  // Invitation images
-  invitationFiles: [],
-  invitationLocalPreviews: [],
-
-  // Signatures (multiple)
-  signatureFiles: [],
-  signatureLocalPreviews: [],
-
-  // Newspaper clippings (multiple)
-  newspaperFiles: [],
-  newspaperLocalPreviews: [],
-
-  quillEditor: null,
-  objectives: [],
-  outcomes: [],
-
-  jobId: null,
-  docxFilename: null,
+  templates: [],
+  selectedTemplate: null,
+  dynamicFields: {}, // Map of fieldMapKey -> value/files
+  quillEditors: {}, // Map of fieldMapKey -> Quill instance
+  imagePreviews: {}, // Map of fieldMapKey -> Array of { objectUrl, file, name }
 };
 
-// ─── DOM Refs ─────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 
-// ─── Toast ────────────────────────────────────────────────────
 function showToast(message, type = 'info', durationMs = 4000) {
   const container = $('toast-container');
+  if(!container) return;
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `
     <span class="toast-icon">${icons[type] || icons.info}</span>
     <span class="toast-message">${message}</span>
-    <button class="toast-close" aria-label="Close">✕</button>
+    <button class="toast-close">✕</button>
   `;
-  toast.querySelector('.toast-close').onclick = () => removeToast(toast);
+  toast.querySelector('.toast-close').onclick = () => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  };
   container.appendChild(toast);
-  if (durationMs > 0) setTimeout(() => removeToast(toast), durationMs);
-}
-
-function removeToast(toast) {
-  toast.style.opacity = '0';
-  toast.style.transform = 'translateY(10px)';
-  toast.style.transition = 'all 0.3s ease';
-  setTimeout(() => toast.remove(), 300);
-}
-
-// ─── Utilities ────────────────────────────────────────────────
-function formatSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1048576).toFixed(1)} MB`;
+  if (durationMs > 0) setTimeout(() => toast.querySelector('.toast-close').click(), durationMs);
 }
 
 function setStatus(text, type = 'ready') {
   const pill = $('status-pill');
+  if(!pill) return;
   const dot = pill.querySelector('.status-dot');
   const label = pill.querySelector('.status-text');
   label.textContent = text;
@@ -78,412 +41,219 @@ function setStatus(text, type = 'ready') {
   if (type === 'warning') dot.classList.add('warning');
 }
 
-// ════════════════════════════════════════════════════════════
-// STEP 1 – TEMPLATE UPLOAD
-// ════════════════════════════════════════════════════════════
-
-function initTemplateUpload() {
-  const dropZone  = $('template-drop-zone');
-  const fileInput = $('template-file-input');
-
-  dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) handleTemplateFile(file);
-  });
-  dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
-  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleTemplateFile(fileInput.files[0]); });
-  $('template-remove-btn').addEventListener('click', resetTemplate);
-}
-
-async function handleTemplateFile(file) {
-  if (!file.name.toLowerCase().endsWith('.docx')) {
-    showToast('Only .docx Word templates are supported.', 'error');
-    return;
-  }
-
-  $('template-file-card').classList.remove('hidden');
-  $('template-drop-zone').classList.add('hidden');
-  $('template-file-name').textContent = file.name;
-  $('template-file-size').textContent = formatSize(file.size);
-  $('template-upload-status').textContent = 'Uploading...';
-  $('template-upload-status').className = 'badge badge-warning';
-  setStatus('Uploading template...', 'loading');
-
-  try {
-    const formData = new FormData();
-    formData.append('template', file);
-
-    const data = await fetch('/api/template/parse', { method: 'POST', body: formData })
-      .then(async (r) => {
-        const json = await r.json();
-        if (!r.ok) throw new Error(json.message || 'Parse failed');
-        return json;
-      });
-
-    state.templateFile = file; // Store the actual file for final generation
-    state.templateFilename = file.name;
-    state.templatePlaceholders = data.placeholders || [];
-
-    $('template-upload-status').textContent = '✓ Analyzed';
-    $('template-upload-status').className = 'badge badge-success';
-    setStatus('Template loaded', 'ready');
-    showToast(`Template parsed — ${data.placeholders.length} placeholder(s) found.`, 'success');
-
-    renderPlaceholderPanel(data.placeholders);
-    updateCustomMappingSection(data.placeholders);
-    updateSummary();
-  } catch (err) {
-    $('template-upload-status').textContent = '✗ Error';
-    $('template-upload-status').className = 'badge badge-danger';
-    setStatus('Parse failed', 'error');
-    showToast(`Template error: ${err.message}`, 'error', 7000);
-  }
-}
-
-function resetTemplate() {
-  state.templateFile = null;
-  state.templateFilename = null;
-  state.templatePlaceholders = [];
-  $('template-file-card').classList.add('hidden');
-  $('template-drop-zone').classList.remove('hidden');
-  $('template-file-input').value = '';
-  $('placeholder-panel').classList.add('hidden');
-  $('custom-mapping-list').innerHTML = '<p class="text-muted" id="custom-mapping-empty">Upload a template to see unmapped placeholders here.</p>';
-  setStatus('Ready', 'ready');
-  updateSummary();
-}
-
-function renderPlaceholderPanel(placeholders) {
-  const panel = $('placeholder-panel');
-  const grid  = $('placeholder-grid');
-  const count = $('placeholder-count');
-  const warn  = $('no-placeholder-warning');
-
-  panel.classList.remove('hidden');
-
-  if (!placeholders || placeholders.length === 0) {
-    grid.innerHTML = '';
-    warn.classList.remove('hidden');
-    count.textContent = '0 placeholders';
-    return;
-  }
-
-  warn.classList.add('hidden');
-  count.textContent = `${placeholders.length} placeholder${placeholders.length > 1 ? 's' : ''}`;
-
-  const typeIcons = { text: '📝', image: '🖼️', list: '📋', pageControl: '📄' };
-  grid.innerHTML = placeholders.map((p) => `
-    <div class="placeholder-tag type-${p.type}" title="${p.type} placeholder">
-      <span class="tag-icon">${typeIcons[p.type] || '•'}</span>${p.token}
-    </div>
-  `).join('');
-}
-
-// ════════════════════════════════════════════════════════════
-// GENERIC MULTI-IMAGE GRID UPLOADER
-// Used for Photos, Invitation, Signature, Newspaper
-// ════════════════════════════════════════════════════════════
-
-/**
- * Set up a multi-image upload zone.
- *
- * @param {object} cfg
- *   dropZoneId    - id of the upload area element
- *   fileInputId   - id of the <input type="file">
- *   gridId        - id of the photo-grid div
- *   countInfoId   - id of the count info div
- *   stateIds      - { fileIds: key, previews: key } on state object
- *   apiEndpoint   - '/api/images/upload' | '/api/invitation/upload' etc.
- *   formFieldName - field name for FormData (e.g. 'photos', 'signature', 'newspaper')
- *   maxFiles      - maximum number of files allowed
- *   slotPrefix    - e.g. 'PHOTO' → labels as {{PHOTO_1}}
- */
-function initMultiImageZone(cfg) {
-  const dropZone  = $(cfg.dropZoneId);
-  const fileInput = $(cfg.fileInputId);
-  const folderInput = cfg.folderInputId ? $(cfg.folderInputId) : null;
-  if (!dropZone || !fileInput) return;
-
-  dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    handleMultiImageFiles(Array.from(e.dataTransfer.files), cfg);
-  });
-  fileInput.addEventListener('change', () => {
-    handleMultiImageFiles(Array.from(fileInput.files), cfg);
-    fileInput.value = '';
-  });
+// ─── INIT ───
+document.addEventListener('DOMContentLoaded', async () => {
+  await fetchTemplates();
   
-  if (folderInput) {
-    folderInput.addEventListener('change', () => {
-      handleMultiImageFiles(Array.from(folderInput.files), cfg);
-      folderInput.value = '';
-    });
+  $('template-select').addEventListener('change', (e) => {
+    const templateId = e.target.value;
+    selectTemplate(templateId);
+  });
+
+  $('generate-btn').addEventListener('click', handleGenerate);
+  $('generate-another-btn').addEventListener('click', resetGenerationState);
+});
+
+async function fetchTemplates() {
+  try {
+    const res = await fetch('/api/public/templates');
+    const data = await res.json();
+    state.templates = data;
+    
+    const select = $('template-select');
+    if (data.length === 0) {
+      select.innerHTML = '<option value="" disabled selected>No templates available</option>';
+      return;
+    }
+
+    select.innerHTML = '<option value="" disabled selected>Select a template...</option>' + 
+      data.map(t => `<option value="${t._id}">${t.templateName}</option>`).join('');
+      
+  } catch (err) {
+    showToast('Failed to load templates', 'error');
   }
 }
 
-async function handleMultiImageFiles(files, cfg) {
-  const imageFiles = files.filter((f) => f.type.match(/^image\/(jpeg|jpg|png|webp)$/i));
-  if (imageFiles.length === 0) {
-    showToast('Please select JPG, PNG, or WebP images.', 'warning');
-    return;
+function selectTemplate(templateId) {
+  const template = state.templates.find(t => t._id === templateId);
+  state.selectedTemplate = template;
+  
+  const infoCard = $('template-info-card');
+  $('selected-template-name').textContent = template.templateName;
+  $('selected-template-desc').textContent = template.description || 'No description';
+  infoCard.classList.remove('hidden');
+
+  const downloadBtn = $('download-sample-btn');
+  if (template.templateFileUrl) {
+    downloadBtn.href = template.templateFileUrl;
+    downloadBtn.download = template.templateFilename;
+    downloadBtn.classList.remove('hidden');
+  } else {
+    downloadBtn.classList.add('hidden');
   }
 
-  const filesArray = state[cfg.stateIds.files];
-  const previews  = state[cfg.stateIds.previews];
-  const remaining = cfg.maxFiles - filesArray.length;
-  if (remaining <= 0) {
-    showToast(`Maximum ${cfg.maxFiles} images allowed for this section.`, 'warning');
-    return;
-  }
-
-  const toUpload = imageFiles.slice(0, remaining);
-
-  toUpload.forEach((f) => {
-    const objectUrl = URL.createObjectURL(f);
-    filesArray.push(f);
-    previews.push({ objectUrl, name: f.name });
-  });
-
-  renderImageGrid(cfg);
-  setStatus('Images added', 'ready');
+  buildDynamicForm(template);
   updateSummary();
 }
 
-function renderImageGrid(cfg) {
-  const grid     = $(cfg.gridId);
-  const countEl  = $(cfg.countInfoId);
-  const filesArray = state[cfg.stateIds.files];
-  const previews = state[cfg.stateIds.previews];
-  if (!grid) return;
+// ─── DYNAMIC FORM BUILDER ───
+function buildDynamicForm(template) {
+  const container = $('dynamic-steps-container');
+  container.innerHTML = '';
+  state.dynamicFields = {};
+  state.quillEditors = {};
+  state.imagePreviews = {};
 
-  grid.innerHTML = '';
-  previews.forEach((img, idx) => {
-    const card = document.createElement('div');
-    card.className = 'photo-card';
-    card.draggable = true;
-    card.dataset.idx = idx;
-    card.innerHTML = `
-      <img src="${img.objectUrl}" alt="${cfg.slotPrefix} ${idx + 1}" loading="lazy" />
-      <div class="photo-card-overlay">
-        <span class="photo-slot-label">{{${cfg.slotPrefix}_${idx + 1}}}</span>
-        <button class="icon-btn" data-idx="${idx}" aria-label="Remove">✕</button>
+  template.steps.forEach((step, stepIndex) => {
+    const section = document.createElement('section');
+    section.className = 'form-section';
+    
+    let html = `
+      <div class="section-header">
+        <div class="section-badge">Step ${stepIndex + 2}</div>
+        <h2 class="section-title">${step.title}</h2>
+        ${step.description ? `<p class="section-desc">${step.description}</p>` : ''}
       </div>
     `;
 
-    card.querySelector('.icon-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeImageFromGrid(idx, cfg);
+    step.fields.forEach((field, fieldIndex) => {
+      const fieldId = `field_${stepIndex}_${fieldIndex}`;
+      const mapKey = field.placeholderMap;
+      
+      html += `<div class="form-group" style="margin-bottom:18px;">
+        <label class="form-label">${field.label}</label>
+        <span class="field-hint">Maps to <code>{{${mapKey}}}</code></span>
+      `;
+
+      if (field.type === 'text') {
+        html += `<input type="text" id="${fieldId}" data-map="${mapKey}" class="form-input dynamic-text-input" placeholder="Enter ${field.label}" />`;
+      } 
+      else if (field.type === 'rich_text') {
+        html += `<div class="quill-wrapper"><div id="${fieldId}" data-map="${mapKey}"></div></div>`;
+      } 
+      else if (field.type === 'image') {
+        state.imagePreviews[mapKey] = [];
+        html += `
+          <div class="photo-upload-area dynamic-drop-zone" id="drop_${fieldId}" data-map="${mapKey}">
+            <div class="photo-upload-inner">
+              <div class="upload-icon small">🖼️</div>
+              <p>Drag & Drop images here or</p>
+              <div style="display: flex; gap: 8px; justify-content: center; margin: 4px 0;">
+                <label class="btn btn-outline btn-sm" for="file_${fieldId}">Add Images</label>
+                <input type="file" id="file_${fieldId}" accept="image/*" multiple hidden class="dynamic-file-input" data-map="${mapKey}" />
+              </div>
+            </div>
+          </div>
+          <div class="photo-grid" id="grid_${fieldId}"></div>
+        `;
+      }
+
+      html += `</div>`;
     });
 
-    // Drag-reorder
-    card.addEventListener('dragstart', (e) => {
-      card.classList.add('dragging');
-      e.dataTransfer.setData('text/plain', String(idx));
-    });
-    card.addEventListener('dragend', () => card.classList.remove('dragging'));
-    card.addEventListener('dragover', (e) => e.preventDefault());
-    card.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
-      if (fromIdx !== idx) reorderImageGrid(fromIdx, idx, cfg);
-    });
+    section.innerHTML = html;
+    container.appendChild(section);
 
+    // Initialize interactive elements for this step
+    step.fields.forEach((field, fieldIndex) => {
+      const fieldId = `field_${stepIndex}_${fieldIndex}`;
+      const mapKey = field.placeholderMap;
+      
+      if (field.type === 'text') {
+        const input = $(fieldId);
+        input.addEventListener('input', () => {
+          state.dynamicFields[mapKey] = input.value;
+          updateSummary();
+        });
+      }
+      else if (field.type === 'rich_text') {
+        const editor = new Quill(`#${fieldId}`, {
+          theme: 'snow',
+          modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['clean']] }
+        });
+        state.quillEditors[mapKey] = editor;
+        editor.on('text-change', () => {
+          state.dynamicFields[mapKey] = editor.root.innerHTML;
+          updateSummary();
+        });
+      }
+      else if (field.type === 'image') {
+        initDynamicImageDropzone(`drop_${fieldId}`, `file_${fieldId}`, `grid_${fieldId}`, mapKey);
+      }
+    });
+  });
+}
+
+// ─── DYNAMIC IMAGE HANDLING ───
+function initDynamicImageDropzone(dropZoneId, fileInputId, gridId, mapKey) {
+  const dropZone = $(dropZoneId);
+  const fileInput = $(fileInputId);
+  
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleDynamicImages(Array.from(e.dataTransfer.files), mapKey, gridId);
+  });
+  
+  fileInput.addEventListener('change', () => {
+    handleDynamicImages(Array.from(fileInput.files), mapKey, gridId);
+    fileInput.value = '';
+  });
+}
+
+function handleDynamicImages(files, mapKey, gridId) {
+  const imageFiles = files.filter(f => f.type.startsWith('image/'));
+  if(imageFiles.length === 0) return;
+
+  const arr = state.imagePreviews[mapKey];
+  
+  imageFiles.forEach(f => {
+    arr.push({
+      file: f,
+      name: f.name,
+      objectUrl: URL.createObjectURL(f)
+    });
+  });
+
+  renderDynamicImageGrid(mapKey, gridId);
+  updateSummary();
+}
+
+function renderDynamicImageGrid(mapKey, gridId) {
+  const grid = $(gridId);
+  const arr = state.imagePreviews[mapKey];
+  grid.innerHTML = '';
+
+  arr.forEach((img, idx) => {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+    card.innerHTML = `
+      <img src="${img.objectUrl}" alt="Img" loading="lazy" />
+      <div class="photo-card-overlay">
+        <span class="photo-slot-label">{{${mapKey}_${idx + 1}}}</span>
+        <button class="icon-btn remove-btn" aria-label="Remove">✕</button>
+      </div>
+    `;
+    card.querySelector('.remove-btn').addEventListener('click', () => {
+      URL.revokeObjectURL(img.objectUrl);
+      arr.splice(idx, 1);
+      renderDynamicImageGrid(mapKey, gridId);
+      updateSummary();
+    });
     grid.appendChild(card);
   });
-
-  if (countEl) {
-    if (previews.length > 0) {
-      countEl.classList.remove('hidden');
-      countEl.textContent = `${previews.length} image(s) — drag to reorder`;
-    } else {
-      countEl.classList.add('hidden');
-    }
-  }
 }
 
-function removeImageFromGrid(idx, cfg) {
-  const previews = state[cfg.stateIds.previews];
-  URL.revokeObjectURL(previews[idx].objectUrl);
-  state[cfg.stateIds.files].splice(idx, 1);
-  previews.splice(idx, 1);
-  renderImageGrid(cfg);
-  updateSummary();
-}
 
-function reorderImageGrid(fromIdx, toIdx, cfg) {
-  const arr  = state[cfg.stateIds.files];
-  const prev = state[cfg.stateIds.previews];
-  const [moved]     = arr.splice(fromIdx, 1);
-  const [prevMoved] = prev.splice(fromIdx, 1);
-  arr.splice(toIdx, 0, moved);
-  prev.splice(toIdx, 0, prevMoved);
-  renderImageGrid(cfg);
-}
-
-// Zone configs
-const PHOTO_CFG = {
-  dropZoneId: 'photo-drop-zone', fileInputId: 'photo-file-input', folderInputId: 'photo-folder-input',
-  gridId: 'photo-grid', countInfoId: 'photo-count-info',
-  stateIds: { files: 'photoFiles', previews: 'photoLocalPreviews' },
-  maxFiles: 20, slotPrefix: 'PHOTO',
-};
-const INVITATION_CFG = {
-  dropZoneId: 'invitation-drop-zone', fileInputId: 'invitation-file-input', folderInputId: 'invitation-folder-input',
-  gridId: 'invitation-grid', countInfoId: 'invitation-count-info',
-  stateIds: { files: 'invitationFiles', previews: 'invitationLocalPreviews' },
-  maxFiles: 10, slotPrefix: 'INVITATION',
-};
-const SIGNATURE_CFG = {
-  dropZoneId: 'signature-drop-zone', fileInputId: 'signature-file-input', folderInputId: 'signature-folder-input',
-  gridId: 'signature-grid', countInfoId: 'signature-count-info',
-  stateIds: { files: 'signatureFiles', previews: 'signatureLocalPreviews' },
-  maxFiles: 10, slotPrefix: 'SIGNATURE',
-};
-const NEWSPAPER_CFG = {
-  dropZoneId: 'newspaper-drop-zone', fileInputId: 'newspaper-file-input', folderInputId: 'newspaper-folder-input',
-  gridId: 'newspaper-grid', countInfoId: 'newspaper-count-info',
-  stateIds: { files: 'newspaperFiles', previews: 'newspaperLocalPreviews' },
-  maxFiles: 10, slotPrefix: 'NEWSPAPER',
-};
-
-// ════════════════════════════════════════════════════════════
-// DYNAMIC LISTS – Objectives & Outcomes
-// ════════════════════════════════════════════════════════════
-
-function initDynamicLists() {
-  $('add-objective-btn').addEventListener('click', () => addListItem('objectives'));
-  $('add-outcome-btn').addEventListener('click',   () => addListItem('outcomes'));
-}
-
-function addListItem(listType) {
-  const listId  = listType === 'objectives' ? 'objectives-list' : 'outcomes-list';
-  const emptyId = listType === 'objectives' ? 'objectives-empty' : 'outcomes-empty';
-  const list  = $(listId);
-  const empty = $(emptyId);
-  if (empty) empty.style.display = 'none';
-
-  const arr   = listType === 'objectives' ? state.objectives : state.outcomes;
-  const index = arr.length;
-  arr.push('');
-
-  const item = document.createElement('div');
-  item.className = 'list-item';
-  item.dataset.index = index;
-  item.innerHTML = `
-    <span class="list-item-num">${index + 1}</span>
-    <input type="text" placeholder="Enter ${listType === 'objectives' ? 'objective' : 'outcome'}..." />
-    <button class="icon-btn" title="Remove" aria-label="Remove item">✕</button>
-  `;
-
-  const input = item.querySelector('input');
-  input.addEventListener('input', () => { arr[index] = input.value; updateSummary(); });
-  item.querySelector('.icon-btn').addEventListener('click', () => {
-    arr.splice(index, 1);
-    item.remove();
-    renumberList(listId, listType);
-    if (arr.length === 0 && empty) empty.style.display = '';
-    updateSummary();
-  });
-
-  list.appendChild(item);
-  input.focus();
-  updateSummary();
-}
-
-function renumberList(listId, listType) {
-  const items = $(listId).querySelectorAll('.list-item');
-  const arr   = listType === 'objectives' ? state.objectives : state.outcomes;
-  items.forEach((item, i) => {
-    item.dataset.index = i;
-    item.querySelector('.list-item-num').textContent = i + 1;
-    const input = item.querySelector('input');
-    const newInput = input.cloneNode(true);
-    input.parentNode.replaceChild(newInput, input);
-    newInput.addEventListener('input', () => { arr[i] = newInput.value; updateSummary(); });
-  });
-}
-
-// ════════════════════════════════════════════════════════════
-// QUILL RICH TEXT EDITOR
-// ════════════════════════════════════════════════════════════
-
-function initQuill() {
-  state.quillEditor = new Quill('#report-editor', {
-    theme: 'snow',
-    placeholder: 'Describe the event: date, activities, speakers, participants, highlights...',
-    modules: {
-      toolbar: [
-        ['bold', 'italic', 'underline'],
-        [{ list: 'ordered' }, { list: 'bullet' }],
-        ['clean'],
-      ],
-    },
-  });
-  state.quillEditor.on('text-change', () => updateSummary());
-}
-
-// ════════════════════════════════════════════════════════════
-// CUSTOM PLACEHOLDER MAPPING
-// ════════════════════════════════════════════════════════════
-
-const HANDLED_PLACEHOLDERS = new Set([
-  'EVENT_TITLE', 'REPORT_TITLE', 'REPORT', 'REPORT_DESCRIPTION',
-  'OBJECTIVES', 'OUTCOME',
-  // Photo families
-  ...Array.from({length: 20}, (_, i) => `PHOTO_${i+1}`),
-  ...Array.from({length: 10}, (_, i) => `INVITATION_${i+1}`),
-  ...Array.from({length: 10}, (_, i) => `SIGNATURE_${i+1}`),
-  ...Array.from({length: 10}, (_, i) => `NEWSPAPER_${i+1}`),
-  'SIGNATURE', 'NEWSPAPER_CLIPPING', 'NEWSPAPER',
-  'PAGE_BREAK', 'PHOTO_SECTION', 'SECTION_BREAK',
-]);
-
-function updateCustomMappingSection(placeholders) {
-  const container = $('custom-mapping-list');
-  const unhandled = placeholders.filter((p) => !HANDLED_PLACEHOLDERS.has(p.name) && p.type === 'text');
-
-  if (unhandled.length === 0) {
-    container.innerHTML = `<p class="text-muted">All detected placeholders are handled by the form fields above.</p>`;
-    return;
-  }
-
-  container.innerHTML = unhandled.map((p) => `
-    <div class="mapping-row">
-      <span class="mapping-token">${p.token}</span>
-      <span class="mapping-arrow">→</span>
-      <input class="mapping-input" type="text" id="map-${p.name}" data-placeholder="${p.name}" placeholder="Enter value for ${p.token}..." />
-    </div>
-  `).join('');
-}
-
-function getCustomMappingData() {
-  const result = {};
-  document.querySelectorAll('.mapping-input').forEach((input) => {
-    if (input.value.trim()) result[input.dataset.placeholder] = input.value.trim();
-  });
-  return result;
-}
-
-// ════════════════════════════════════════════════════════════
-// CONTENT SUMMARY
-// ════════════════════════════════════════════════════════════
-
+// ─── SUMMARY ───
 function updateSummary() {
   const placeholder = $('preview-placeholder');
-  const summary     = $('content-summary');
-  const list        = $('summary-list');
+  const summary = $('content-summary');
+  const list = $('summary-list');
 
-  const eventTitle  = $('field-event-title')?.value?.trim();
-  const hasTemplate = !!state.templateFile;
-
-  if (!hasTemplate && !eventTitle) {
+  if (!state.selectedTemplate) {
     placeholder.classList.remove('hidden');
     summary.classList.add('hidden');
     return;
@@ -491,72 +261,38 @@ function updateSummary() {
 
   placeholder.classList.add('hidden');
   summary.classList.remove('hidden');
+  
+  const items = [{ icon: '📄', label: 'Template', value: state.selectedTemplate.templateName, good: true }];
 
-  const items = [];
-
-  items.push({
-    icon: '📄', label: 'Template',
-    value: hasTemplate ? state.templateFilename : 'Not uploaded',
-    good: hasTemplate, warn: !hasTemplate,
+  // Add fields dynamically
+  Object.keys(state.dynamicFields).forEach(key => {
+    const val = state.dynamicFields[key];
+    if (val && val.trim().length > 0 && val !== '<p><br></p>') {
+      items.push({ icon: '📝', label: key, value: val.replace(/<[^>]*>?/gm, '').substring(0, 30) + '...', good: true });
+    }
   });
 
-  if (eventTitle) items.push({ icon: '📌', label: 'Event Title', value: eventTitle, good: true });
+  Object.keys(state.imagePreviews).forEach(key => {
+    const arr = state.imagePreviews[key];
+    if (arr.length > 0) {
+      items.push({ icon: '📷', label: key, value: `${arr.length} images`, good: true });
+    }
+  });
 
-  const reportTitle = $('field-report-title')?.value?.trim();
-  if (reportTitle) items.push({ icon: '📝', label: 'Report Title', value: reportTitle, good: true });
-
-  if (state.invitationLocalPreviews.length > 0) {
-    items.push({ icon: '📩', label: 'Invitation', value: `${state.invitationLocalPreviews.length} image(s)`, good: true });
-  }
-  if (state.objectives.filter(Boolean).length > 0) {
-    items.push({ icon: '🎯', label: 'Objectives', value: `${state.objectives.filter(Boolean).length} item(s)`, good: true });
-  }
-  const reportText = state.quillEditor ? state.quillEditor.getText().trim() : '';
-  if (reportText.length > 10) {
-    items.push({ icon: '📖', label: 'Report', value: `${reportText.length} characters`, good: true });
-  }
-  if (state.outcomes.filter(Boolean).length > 0) {
-    items.push({ icon: '✅', label: 'Outcome', value: `${state.outcomes.filter(Boolean).length} item(s)`, good: true });
-  }
-  if (state.photoLocalPreviews.length > 0) {
-    items.push({ icon: '📷', label: 'Photos', value: `${state.photoLocalPreviews.length} photo(s)`, good: true });
-  }
-  if (state.signatureLocalPreviews.length > 0) {
-    items.push({ icon: '✍️', label: 'Signatures', value: `${state.signatureLocalPreviews.length} image(s)`, good: true });
-  }
-  if (state.newspaperLocalPreviews.length > 0) {
-    items.push({ icon: '📰', label: 'Newspaper', value: `${state.newspaperLocalPreviews.length} clipping(s)`, good: true });
-  }
-
-  list.innerHTML = items.map((item) => `
+  list.innerHTML = items.map(item => `
     <li class="summary-item">
       <span class="summary-item-icon">${item.icon}</span>
       <span class="summary-item-label">${item.label}</span>
-      <span class="summary-item-value ${item.good ? 'good' : item.warn ? 'warn' : ''}">${item.value}</span>
+      <span class="summary-item-value good">${item.value}</span>
     </li>
   `).join('');
 }
 
-// ════════════════════════════════════════════════════════════
-// GENERATE DOCUMENT
-// ════════════════════════════════════════════════════════════
 
-function initGenerateBtn() {
-  $('generate-btn').addEventListener('click', handleGenerate);
-  $('generate-another-btn').addEventListener('click', resetGenerationState);
-}
-
+// ─── GENERATE ───
 async function handleGenerate() {
-  if (!state.templateFile) {
-    showToast('Please upload a Word template first.', 'warning');
-    $('section-template').scrollIntoView({ behavior: 'smooth' });
-    return;
-  }
-
-  const eventTitle = $('field-event-title').value.trim();
-  if (!eventTitle) {
-    showToast('Please enter an Event Title.', 'warning');
-    $('field-event-title').focus();
+  if (!state.selectedTemplate) {
+    showToast('Please select a template.', 'warning');
     return;
   }
 
@@ -564,67 +300,44 @@ async function handleGenerate() {
   $('generate-btn').disabled = true;
   setStatus('Generating document...', 'loading');
 
-  const progressSteps = ['template', 'text', 'invitation', 'images', 'signature', 'newspaper', 'formatting', 'docx'];
-  let stepIdx = 0;
-  markProgressStep(progressSteps[0], 'active');
-
-  const stepInterval = setInterval(() => {
-    if (stepIdx < progressSteps.length) {
-      markProgressStep(progressSteps[stepIdx], 'done');
-      stepIdx++;
-      if (stepIdx < progressSteps.length) markProgressStep(progressSteps[stepIdx], 'active');
-    }
-  }, 700);
-
   try {
-    const reportHtml = state.quillEditor ? state.quillEditor.root.innerHTML : '';
-
     const formData = new FormData();
-    formData.append('template', state.templateFile);
-    formData.append('eventTitle', eventTitle);
-    formData.append('reportTitle', $('field-report-title').value.trim());
-    formData.append('reportDescription', reportHtml);
-    formData.append('objectives', JSON.stringify(state.objectives.filter(Boolean)));
-    formData.append('outcomes', JSON.stringify(state.outcomes.filter(Boolean)));
-    formData.append('customTextData', JSON.stringify(getCustomMappingData()));
+    formData.append('templateId', state.selectedTemplate._id);
 
-    state.photoFiles.forEach((f) => formData.append('photos', f));
-    state.invitationFiles.forEach((f) => formData.append('invitation', f));
-    state.signatureFiles.forEach((f) => formData.append('signature', f));
-    state.newspaperFiles.forEach((f) => formData.append('newspaper', f));
+    // Text & Rich Text fields
+    const textData = {};
+    Object.keys(state.dynamicFields).forEach(key => {
+      textData[key] = state.dynamicFields[key];
+    });
+    formData.append('dynamicTextData', JSON.stringify(textData));
 
-    const data = await fetch('/api/document/generate', {
-      method: 'POST',
-      body: formData,
-    }).then(async (r) => {
-      const json = await r.json();
-      if (!r.ok) throw new Error(json.message || json.messages?.join('\n') || 'Generation failed');
-      return json;
+    // Images
+    Object.keys(state.imagePreviews).forEach(key => {
+      const arr = state.imagePreviews[key];
+      arr.forEach(imgObj => {
+        // We append them using the key, multer will parse them into an array under this field name
+        formData.append(key, imgObj.file);
+      });
     });
 
-    clearInterval(stepInterval);
-    progressSteps.forEach((s) => markProgressStep(s, 'done'));
-
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    state.docxFilename = data.filename;
+    const data = await fetch('/api/document/generate-dynamic', {
+      method: 'POST',
+      body: formData,
+    }).then(async r => {
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.message || 'Generation failed');
+      return json;
+    });
 
     showDownloadPanel(data);
     setStatus('Document ready', 'ready');
     showToast('Document generated successfully!', 'success');
   } catch (err) {
-    clearInterval(stepInterval);
     hideProgressPanel();
     $('generate-btn').disabled = false;
     setStatus('Generation failed', 'error');
     showToast(`Generation error: ${err.message}`, 'error', 8000);
-    console.error('[GENERATE]', err);
   }
-}
-
-function markProgressStep(stepName, status) {
-  const el = document.querySelector(`.progress-step[data-step="${stepName}"]`);
-  if (el) el.className = `progress-step ${status}`;
 }
 
 function showProgressPanel() {
@@ -632,7 +345,6 @@ function showProgressPanel() {
   $('content-summary').classList.add('hidden');
   $('download-panel').classList.add('hidden');
   $('progress-panel').classList.remove('hidden');
-  document.querySelectorAll('.progress-step').forEach((el) => { el.className = 'progress-step'; });
 }
 
 function hideProgressPanel() {
@@ -677,41 +389,6 @@ function showDownloadPanel(data) {
 function resetGenerationState() {
   $('download-panel').classList.add('hidden');
   $('generate-btn').disabled = false;
-  state.docxFilename = null;
-  document.querySelectorAll('.progress-step').forEach((el) => { el.className = 'progress-step'; });
   updateSummary();
   setStatus('Ready', 'ready');
 }
-
-// ════════════════════════════════════════════════════════════
-// FIELD LISTENERS (for summary updates)
-// ════════════════════════════════════════════════════════════
-
-function initFieldListeners() {
-  ['field-event-title', 'field-report-title'].forEach((id) => {
-    const el = $(id);
-    if (el) el.addEventListener('input', updateSummary);
-  });
-}
-
-// ════════════════════════════════════════════════════════════
-// INITIALIZATION
-// ════════════════════════════════════════════════════════════
-
-document.addEventListener('DOMContentLoaded', () => {
-  initTemplateUpload();
-  initDynamicLists();
-  initQuill();
-
-  // Register all multi-image zones
-  initMultiImageZone(PHOTO_CFG);
-  initMultiImageZone(INVITATION_CFG);
-  initMultiImageZone(SIGNATURE_CFG);
-  initMultiImageZone(NEWSPAPER_CFG);
-
-  initGenerateBtn();
-  initFieldListeners();
-  updateSummary();
-
-  console.log('🚀 Document Automation App initialized');
-});

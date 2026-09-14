@@ -61,16 +61,13 @@ function htmlToPlainText(html) {
 async function generateDocument(params) {
   const {
     templateBuffer,
-    textData = {},
-    photoBuffers = [],
-    invitationBuffers = [],
-    signatureBuffers = [],
-    newspaperBuffers = [],
+    dynamicTextData = {},
+    dynamicImageBuffers = {},
     eventTitle = 'document',
   } = params;
 
   const jobId = uuidv4();
-  const slug = slugifyTitle(textData.EVENT_TITLE || textData.REPORT_TITLE || eventTitle);
+  const slug = slugifyTitle(dynamicTextData.EVENT_TITLE || dynamicTextData.REPORT_TITLE || eventTitle);
   const outputFilename = `${slug}_${jobId.substring(0, 8)}.docx`;
   const outputPath = path.join(GENERATED_DOCX_DIR, outputFilename);
 
@@ -113,33 +110,24 @@ async function generateDocument(params) {
     }
   }
 
-  // Event photos → PHOTO_1, PHOTO_2, …
-  for (let i = 0; i < photoBuffers.length; i++) {
-    await processAndStoreImage(`PHOTO_${i + 1}`, photoBuffers[i], 280, 180);
-  }
+  // ── 3. Process Dynamic Image Buffers ──────────────────────────────────────
+  for (const [mapKey, buffers] of Object.entries(dynamicImageBuffers)) {
+    let w = 400, h = 400; // generic fallback
+    const keyLower = mapKey.toLowerCase();
+    
+    // Attempt to infer size from name
+    if (keyLower.includes('photo')) { w = 280; h = 180; }
+    else if (keyLower.includes('invit')) { w = 550; h = 750; }
+    else if (keyLower.includes('sign')) { w = 200; h = 260; }
+    else if (keyLower.includes('news')) { w = 550; h = 750; }
 
-  // Invitation images → INVITATION_1, INVITATION_2, …
-  for (let i = 0; i < invitationBuffers.length; i++) {
-    await processAndStoreImage(`INVITATION_${i + 1}`, invitationBuffers[i], 550, 750);
-  }
-
-  // Signatures → SIGNATURE_1, SIGNATURE_2, …  (also SIGNATURE as alias for first)
-  for (let i = 0; i < signatureBuffers.length; i++) {
-    await processAndStoreImage(`SIGNATURE_${i + 1}`, signatureBuffers[i], 200, 260);
-    if (i === 0) {
-      imageBuffers['SIGNATURE'] = imageBuffers[`SIGNATURE_1`];
-      imageDimensions['SIGNATURE'] = imageDimensions[`SIGNATURE_1`];
-    }
-  }
-
-  // Newspapers → NEWSPAPER_1, NEWSPAPER_2, …  (also NEWSPAPER_CLIPPING / NEWSPAPER as aliases)
-  for (let i = 0; i < newspaperBuffers.length; i++) {
-    await processAndStoreImage(`NEWSPAPER_${i + 1}`, newspaperBuffers[i], 550, 750);
-    if (i === 0) {
-      imageBuffers['NEWSPAPER_CLIPPING'] = imageBuffers[`NEWSPAPER_1`];
-      imageBuffers['NEWSPAPER'] = imageBuffers[`NEWSPAPER_1`];
-      imageDimensions['NEWSPAPER_CLIPPING'] = imageDimensions[`NEWSPAPER_1`];
-      imageDimensions['NEWSPAPER'] = imageDimensions[`NEWSPAPER_1`];
+    for (let i = 0; i < buffers.length; i++) {
+      await processAndStoreImage(`${mapKey}_${i + 1}`, buffers[i], w, h);
+      if (i === 0) {
+        // Alias the first image to the base mapKey (e.g. PHOTO maps to PHOTO_1)
+        imageBuffers[mapKey] = imageBuffers[`${mapKey}_1`];
+        imageDimensions[mapKey] = imageDimensions[`${mapKey}_1`];
+      }
     }
   }
 
@@ -175,23 +163,14 @@ async function generateDocument(params) {
   // ── 5. Build text data object ──────────────────────────────────────────────
   const data = {};
 
-  // Copy user-supplied text values
-  for (const [key, value] of Object.entries(textData)) {
-    data[key] = value || '';
-  }
-
-  // Numbered lists
-  if (params.objectives && params.objectives.length > 0) {
-    data['OBJECTIVES'] = formatNumberedList(params.objectives);
-  }
-  if (params.outcomes && params.outcomes.length > 0) {
-    data['OUTCOME'] = formatNumberedList(params.outcomes);
-  }
-
-  // Report description (strip HTML to plain text with linebreaks)
-  if (params.reportDescription) {
-    data['REPORT'] = htmlToPlainText(params.reportDescription);
-    data['REPORT_DESCRIPTION'] = data['REPORT'];
+  // Copy user-supplied dynamic text values
+  for (const [key, value] of Object.entries(dynamicTextData)) {
+    // If it looks like HTML from a rich text field, strip it
+    if (value && typeof value === 'string' && value.includes('<')) {
+      data[key] = htmlToPlainText(value);
+    } else {
+      data[key] = value || '';
+    }
   }
 
   // Attach image buffers into data map so image module can find them by tag name

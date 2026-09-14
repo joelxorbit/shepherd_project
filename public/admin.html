@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard – Document Automation</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-body">
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand" style="display: flex; align-items: center; gap: 10px;">
+      <h2 style="margin: 0; font-size: 1.2rem; color: #333;">Admin Dashboard</h2>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline btn-sm" id="logout-btn">Logout</button>
+    </div>
+  </div>
+</header>
+
+<main class="admin-layout">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-menu">
+      <button class="sidebar-item active" id="menu-templates">Templates</button>
+      <button class="sidebar-item" id="menu-settings" disabled>Settings (Coming soon)</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="admin-content" id="content-templates">
+    <div class="content-header">
+      <h1 class="content-title">Manage Templates</h1>
+      <button class="btn btn-primary" id="create-template-btn">+ Create Template</button>
+    </div>
+
+    <!-- Templates List -->
+    <div class="templates-grid" id="templates-grid">
+      <!-- Dynamically populated -->
+      <div class="loading-state">Loading templates...</div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Template Form (Hidden by default) -->
+  <div class="admin-content hidden" id="content-template-form">
+    <div class="content-header">
+      <h1 class="content-title" id="form-title">Create New Template</h1>
+      <div style="display:flex; gap: 10px;">
+        <button class="btn btn-outline" id="cancel-form-btn">Cancel</button>
+        <button class="btn btn-success" id="save-template-btn">Save Configuration</button>
+      </div>
+    </div>
+
+    <div class="form-panel" style="max-width: 100%; border: none; box-shadow: none;">
+      
+      <div class="form-section">
+        <h2 class="section-title">General Info</h2>
+        <div class="form-group">
+          <label class="form-label" for="cfg-template-name">Template Name (e.g. Health Activity Report) <span class="required">*</span></label>
+          <input type="text" id="cfg-template-name" class="form-input" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cfg-template-desc">Description</label>
+          <input type="text" id="cfg-template-desc" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cfg-template-file">Template Document (.docx) <span class="required">*</span></label>
+          <input type="file" id="cfg-template-file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="form-input" style="padding: 10px;" />
+          <div id="cfg-current-file-info" class="text-muted hidden" style="margin-top: 5px; font-size: 0.9rem;"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 15px;">
+          <h2 class="section-title" style="margin:0;">Configuration Steps</h2>
+          <button class="btn btn-sm btn-primary" id="add-step-btn">+ Add Step</button>
+        </div>
+        <p class="section-desc">Define the steps the user will go through to fill this template.</p>
+        
+        <div id="steps-container" class="steps-container">
+          <!-- Steps added dynamically here -->
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+<!-- Templates for dynamic elements -->
+<template id="tpl-step">
+  <div class="step-card" data-step-index="">
+    <div class="step-card-header">
+      <h3 class="step-card-title">Step <span class="step-number-display">1</span></h3>
+      <button class="icon-btn remove-step-btn" title="Remove Step">✕</button>
+    </div>
+    <div class="step-card-body">
+      <div class="form-group">
+        <label class="form-label">Step Title</label>
+        <input type="text" class="form-input step-title-input" placeholder="e.g. Basic Information" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input type="text" class="form-input step-desc-input" placeholder="e.g. Enter the basic details of the event." />
+      </div>
+      
+      <div class="fields-container">
+        <!-- Fields added here -->
+      </div>
+      
+      <button class="btn btn-outline btn-sm add-field-btn" style="margin-top: 10px;">+ Add Field</button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-field">
+  <div class="field-row">
+    <div class="field-col">
+      <label class="form-label">Field Label</label>
+      <input type="text" class="form-input field-label-input" placeholder="e.g. Event Title" />
+    </div>
+    <div class="field-col">
+      <label class="form-label">Input Type</label>
+      <select class="form-input field-type-select">
+        <option value="text">Text Box</option>
+        <option value="rich_text">Rich Text</option>
+        <option value="image">Image Upload</option>
+      </select>
+    </div>
+    <div class="field-col">
+      <label class="form-label">Placeholder Map</label>
+      <input type="text" class="form-input field-map-input" placeholder="e.g. EVENT_TITLE" />
+    </div>
+    <div class="field-col field-actions">
+      <button class="icon-btn remove-field-btn" title="Remove Field" style="margin-top: 25px;">✕</button>
+    </div>
+  </div>
+</template>
+
+<script src="/js/admin.js"></script>
+
+</body>
+</html>
