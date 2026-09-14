@@ -8,18 +8,11 @@ const TemplateConfig = require('../models/TemplateConfig');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-admin-key-shepherd';
 
-// Setup multer for template docx uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = 'uploads/templates';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+// Setup multer for template docx uploads (Memory storage for Vercel compatibility)
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit for templates
 });
-const upload = multer({ storage });
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
@@ -80,11 +73,11 @@ router.post('/templates', verifyToken, upload.single('templateFile'), async (req
     if (existing) return res.status(400).json({ message: 'Template name already exists' });
 
     let templateFilename = null;
-    let templateFileUrl = null;
+    let templateFileBuffer = null;
 
     if (req.file) {
       templateFilename = req.file.originalname;
-      templateFileUrl = '/' + req.file.path.replace(/\\/g, '/'); // ensure forward slashes
+      templateFileBuffer = req.file.buffer;
     }
 
     const newTemplate = new TemplateConfig({ 
@@ -92,7 +85,7 @@ router.post('/templates', verifyToken, upload.single('templateFile'), async (req
       description, 
       steps,
       templateFilename,
-      templateFileUrl
+      templateFileBuffer
     });
     
     await newTemplate.save();
@@ -112,7 +105,7 @@ router.put('/templates/:id', verifyToken, upload.single('templateFile'), async (
 
     if (req.file) {
       updateData.templateFilename = req.file.originalname;
-      updateData.templateFileUrl = '/' + req.file.path.replace(/\\/g, '/');
+      updateData.templateFileBuffer = req.file.buffer;
     }
 
     const updated = await TemplateConfig.findByIdAndUpdate(

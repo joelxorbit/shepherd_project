@@ -84,8 +84,8 @@ function selectTemplate(templateId) {
   infoCard.classList.remove('hidden');
 
   const downloadBtn = $('download-sample-btn');
-  if (template.templateFileUrl) {
-    downloadBtn.href = template.templateFileUrl;
+  if (template.templateFilename) {
+    downloadBtn.href = `/api/public/templates/${template._id}/download`;
     downloadBtn.download = template.templateFilename;
     downloadBtn.classList.remove('hidden');
   } else {

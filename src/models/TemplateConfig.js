@@ -18,7 +18,8 @@ const templateConfigSchema = new mongoose.Schema({
   templateName: { type: String, required: true, unique: true },
   description: { type: String },
   templateFilename: { type: String }, // e.g. "student.docx"
-  templateFileUrl: { type: String },  // e.g. "/uploads/templates/student-123.docx"
+  templateFileBuffer: { type: Buffer }, // Store binary data in DB for Vercel
+  templateFileUrl: { type: String },  // We will keep this for backward compatibility or future use
   steps: [stepSchema]
 }, { timestamps: true });
 

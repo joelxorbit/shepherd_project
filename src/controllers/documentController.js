@@ -16,16 +16,12 @@ async function generateDynamic(req, res, next) {
     }
 
     const templateConfig = await TemplateConfig.findById(templateId);
-    if (!templateConfig || !templateConfig.templateFileUrl) {
+    if (!templateConfig || !templateConfig.templateFileBuffer) {
       return res.status(400).json({ error: true, message: 'Template not found or has no uploaded .docx file.' });
     }
 
-    // Read the template .docx file from disk
-    const templatePath = path.join(__dirname, '../../', templateConfig.templateFileUrl);
-    if (!fs.existsSync(templatePath)) {
-      return res.status(500).json({ error: true, message: 'Template file is missing on the server.' });
-    }
-    const templateBuffer = fs.readFileSync(templatePath);
+    // Use the .docx buffer stored in MongoDB directly
+    const templateBuffer = templateConfig.templateFileBuffer;
 
     // Group req.files into dynamicImageBuffers
     const dynamicImageBuffers = {};
