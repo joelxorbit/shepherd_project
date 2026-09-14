@@ -14,16 +14,20 @@ const fs = require('fs');
  * @returns {Promise<Buffer>} PNG buffer
  */
 async function resizeImageToFit(filePath, maxWidthPx, maxHeightPx, options = {}) {
-  const { fit = 'inside', background = { r: 255, g: 255, b: 255, alpha: 0 } } = options;
+  const { fit = 'inside', background = { r: 255, g: 255, b: 255, alpha: 1 } } = options;
 
-  return sharp(filePath)
+  const { data, info } = await sharp(filePath)
     .resize(maxWidthPx, maxHeightPx, {
       fit,
       withoutEnlargement: true,
       background,
     })
-    .png()
-    .toBuffer();
+    .jpeg({ quality: 90 })
+    .toBuffer({ resolveWithObject: true });
+
+  // Attach info so the generator can read the exact width/height
+  data.info = info;
+  return data;
 }
 
 /**

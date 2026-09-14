@@ -97,8 +97,11 @@ async function generateDocument(params) {
       let w = maxDisplayW;
       let h = maxDisplayH;
       
-      // Extract exact width/height from the generated PNG buffer
-      if (buf.length >= 24 && buf.toString('ascii', 12, 16) === 'IHDR') {
+      // Extract exact width/height from the generated JPEG buffer
+      if (buf.info && buf.info.width && buf.info.height) {
+        w = buf.info.width / RESOLUTION;
+        h = buf.info.height / RESOLUTION;
+      } else if (buf.length >= 24 && buf.toString('ascii', 12, 16) === 'IHDR') {
         w = buf.readUInt32BE(16) / RESOLUTION;
         h = buf.readUInt32BE(20) / RESOLUTION;
       }
@@ -142,11 +145,8 @@ async function generateDocument(params) {
       return imageDimensions[tagName] || [150, 150];
     },
     setParser(placeHolderContent) {
-      const isImage =
-        placeHolderContent.startsWith('PHOTO_') ||
-        placeHolderContent.startsWith('INVITATION_') ||
-        placeHolderContent.startsWith('SIGNATURE') ||
-        placeHolderContent.startsWith('NEWSPAPER');
+      // Dynamically check if an image was uploaded for this exact placeholder
+      const isImage = !!imageBuffers[placeHolderContent];
 
       if (isImage) {
         return {
