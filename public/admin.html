@@ -35,6 +35,7 @@
     <aside class="admin-sidebar">
       <div class="sidebar-menu">
         <button class="sidebar-item active" id="menu-templates">Templates</button>
+        <button class="sidebar-item" id="menu-reports">Reports</button>
       </div>
     </aside>
 
@@ -49,6 +50,47 @@
       <div class="templates-grid" id="templates-grid">
         <!-- Dynamically populated -->
         <div class="loading-state">Loading templates...</div>
+      </div>
+    </div>
+
+    <!-- Reports Content -->
+    <div class="admin-content hidden" id="content-reports">
+      <div class="content-header">
+        <h1 class="content-title">Reports</h1>
+        <div style="display:flex; gap: 10px;">
+          <input type="file" id="import-excel-file" accept=".xlsx, .xls, .csv" style="display: none;" />
+          <button class="btn btn-outline" id="import-report-btn">Import</button>
+          <button class="btn btn-outline" id="export-report-btn">Export</button>
+          <button class="btn btn-primary" id="add-report-btn">+ Add Report</button>
+        </div>
+      </div>
+
+      <!-- Reports Table -->
+      <div class="reports-container" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        
+        <!-- Search Filter -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+          <select id="report-search-col" class="form-input" style="width: 180px; padding: 8px;">
+            <option value="villageName">Village Name</option>
+            <option value="issue">Issue</option>
+            <option value="status">Status</option>
+          </select>
+          <input type="text" id="report-search-text" class="form-input" placeholder="Search..." style="max-width: 300px; padding: 8px;" />
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; text-align: left;" id="reports-table">
+          <thead>
+            <tr style="border-bottom: 1px solid #eee;">
+              <th style="padding: 12px;">Village Name</th>
+              <th style="padding: 12px;">Issue</th>
+              <th style="padding: 12px;">Status</th>
+              <th style="padding: 12px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reports-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -95,6 +137,33 @@
           <div id="steps-container" class="steps-container">
             <!-- Steps added dynamically here -->
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Report Modal -->
+    <div id="add-report-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+      <div class="modal-content" style="background: white; padding: 30px; border-radius: 8px; width: 400px; max-width: 90%;">
+        <h2 style="margin-top: 0;">Add Report</h2>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label class="form-label">Village Name</label>
+          <input type="text" id="report-village-name" class="form-input" />
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label class="form-label">Issue</label>
+          <input type="text" id="report-issue" class="form-input" />
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label class="form-label">Status</label>
+          <select id="report-status" class="form-input">
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn btn-outline" id="cancel-report-btn">Cancel</button>
+          <button class="btn btn-primary" id="save-report-btn">Save</button>
         </div>
       </div>
     </div>

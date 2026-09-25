@@ -58,6 +58,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('add-step-btn').addEventListener('click', addStep);
   $('save-template-btn').addEventListener('click', saveTemplate);
+
+  // Navigation
+  $('menu-templates').addEventListener('click', () => {
+    $('menu-templates').classList.add('active');
+    $('menu-reports').classList.remove('active');
+    $('content-templates').classList.remove('hidden');
+    $('content-reports').classList.add('hidden');
+    $('content-template-form').classList.add('hidden');
+    loadTemplates();
+  });
+
+  $('menu-reports').addEventListener('click', () => {
+    $('menu-reports').classList.add('active');
+    $('menu-templates').classList.remove('active');
+    $('content-reports').classList.remove('hidden');
+    $('content-templates').classList.add('hidden');
+    $('content-template-form').classList.add('hidden');
+    loadReports();
+  });
+
+  // Reports Events
+  $('add-report-btn').addEventListener('click', () => {
+    currentEditingReportId = null;
+    $('report-village-name').value = '';
+    $('report-issue').value = '';
+    $('report-status').value = 'Pending';
+    $('add-report-modal').querySelector('h2').textContent = 'Add Report';
+    $('add-report-modal').classList.remove('hidden');
+  });
+
+  $('cancel-report-btn').addEventListener('click', () => {
+    $('add-report-modal').classList.add('hidden');
+    currentEditingReportId = null;
+  });
+
+  $('save-report-btn').addEventListener('click', saveReport);
+
+  $('import-report-btn').addEventListener('click', () => {
+    $('import-excel-file').click();
+  });
+
+  $('import-excel-file').addEventListener('change', importReport);
+
+  $('export-report-btn').addEventListener('click', exportReports);
+
+  // Search Filter Events
+  $('report-search-text').addEventListener('input', filterReports);
+  $('report-search-col').addEventListener('change', filterReports);
 });
 
 // ─── API Calls ───
@@ -124,6 +172,207 @@ async function deleteTemplate(id) {
     showToast('Failed to delete', 'error');
   }
 }
+
+// ─── Reports API Logic ───
+let currentReports = [];
+let currentEditingReportId = null;
+
+async function loadReports() {
+  try {
+    const res = await fetch('/api/report');
+    const data = await res.json();
+    currentReports = data;
+    filterReports(); // Automatically renders with current search if any
+  } catch (err) {
+    showToast('Failed to load reports', 'error');
+  }
+}
+
+function filterReports() {
+  const searchText = $('report-search-text').value.toLowerCase();
+  const searchCol = $('report-search-col').value;
+
+  if (!searchText) {
+    renderReports(currentReports);
+    return;
+  }
+
+  const filtered = currentReports.filter(r => {
+    const val = r[searchCol];
+    return val && val.toString().toLowerCase().includes(searchText);
+  });
+
+  renderReports(filtered);
+}
+
+function renderReports(reports) {
+  const tbody = $('reports-table-body');
+  if (reports.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding: 12px; text-align: center;">No reports found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = reports.map(r => `
+    <tr style="border-bottom: 1px solid #eee;">
+      <td style="padding: 12px;">${r.villageName || 'N/A'}</td>
+      <td style="padding: 12px;">${r.issue || 'N/A'}</td>
+      <td style="padding: 12px;">
+        <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background: ${r.status === 'Resolved' ? '#d4edda' : r.status === 'In Progress' ? '#fff3cd' : '#f8d7da'}; color: ${r.status === 'Resolved' ? '#155724' : r.status === 'In Progress' ? '#856404' : '#721c24'};">
+          ${r.status || 'Pending'}
+        </span>
+      </td>
+      <td style="padding: 12px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="icon-btn edit-report-btn" data-id="${r._id}" title="Edit">✏️</button>
+          <button class="icon-btn delete-report-btn" data-id="${r._id}" title="Delete">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  // Attach event listeners for edit and delete
+  document.querySelectorAll('.edit-report-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.getAttribute('data-id');
+      openEditReport(id);
+    });
+  });
+
+  document.querySelectorAll('.delete-report-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.getAttribute('data-id');
+      deleteReportAction(id);
+    });
+  });
+}
+
+function openEditReport(id) {
+  const report = currentReports.find(r => r._id === id);
+  if (!report) return;
+
+  currentEditingReportId = id;
+  $('report-village-name').value = report.villageName;
+  $('report-issue').value = report.issue;
+  $('report-status').value = report.status;
+  $('add-report-modal').querySelector('h2').textContent = 'Edit Report';
+  $('add-report-modal').classList.remove('hidden');
+}
+
+async function deleteReportAction(id) {
+  if (!confirm('Are you sure you want to delete this report?')) return;
+
+  try {
+    const res = await fetch(`/api/report/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (res.ok) {
+      showToast('Report deleted successfully', 'success');
+      loadReports();
+    } else {
+      showToast('Failed to delete report', 'error');
+    }
+  } catch (err) {
+    showToast('Server error', 'error');
+  }
+}
+
+async function saveReport() {
+  const villageName = $('report-village-name').value.trim();
+  const issue = $('report-issue').value.trim();
+  const status = $('report-status').value;
+
+  if (!villageName || !issue || !status) {
+    showToast('All fields are required', 'warning');
+    return;
+  }
+
+  try {
+    const url = currentEditingReportId ? `/api/report/${currentEditingReportId}` : '/api/report';
+    const method = currentEditingReportId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ villageName, issue, status })
+    });
+
+    if (res.ok) {
+      showToast(currentEditingReportId ? 'Report updated successfully' : 'Report added successfully', 'success');
+      $('add-report-modal').classList.add('hidden');
+      $('report-village-name').value = '';
+      $('report-issue').value = '';
+      $('report-status').value = 'Pending';
+      currentEditingReportId = null;
+      loadReports();
+    } else {
+      showToast(currentEditingReportId ? 'Failed to update report' : 'Failed to add report', 'error');
+    }
+  } catch (err) {
+    showToast('Server error', 'error');
+  }
+}
+
+async function importReport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/report/import', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Successfully imported ${data.count} reports`, 'success');
+      loadReports();
+    } else {
+      showToast(data.message || 'Failed to import', 'error');
+    }
+  } catch (err) {
+    showToast('Server error during import', 'error');
+  }
+  
+  event.target.value = ''; // Reset file input
+}
+
+function exportReports() {
+  if (currentReports.length === 0) {
+    showToast('No data to export', 'warning');
+    return;
+  }
+
+  const csvRows = [];
+  const headers = ['Village Name', 'Issue', 'Status', 'Date Created'];
+  csvRows.push(headers.join(','));
+
+  currentReports.forEach(r => {
+    const row = [
+      `"${(r.villageName || '').replace(/"/g, '""')}"`,
+      `"${(r.issue || '').replace(/"/g, '""')}"`,
+      `"${(r.status || '').replace(/"/g, '""')}"`,
+      `"${new Date(r.createdAt).toLocaleDateString()}"`
+    ];
+    csvRows.push(row.join(','));
+  });
+
+  const csvData = csvRows.join('\n');
+  const blob = new Blob([csvData], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.setAttribute('hidden', '');
+  a.setAttribute('href', url);
+  a.setAttribute('download', 'reports.csv');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 
 // ─── Form Builder Logic ───
 function openTemplateForm(data = null) {
