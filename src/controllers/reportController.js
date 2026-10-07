@@ -13,13 +13,13 @@ exports.getReports = async (req, res) => {
 
 exports.addReport = async (req, res) => {
   try {
-    const { villageName, issue, status } = req.body;
+    const reportData = req.body;
     
-    if (!villageName || !issue || !status) {
-      return res.status(400).json({ error: true, message: 'All fields are required' });
+    if (Object.keys(reportData).length === 0) {
+      return res.status(400).json({ error: true, message: 'Report data cannot be empty' });
     }
 
-    const report = new Report({ villageName, issue, status });
+    const report = new Report(reportData);
     await report.save();
     
     res.status(201).json({ success: true, report });
@@ -81,15 +81,15 @@ exports.importExcel = async (req, res) => {
 exports.updateReport = async (req, res) => {
   try {
     const { id } = req.params;
-    const { villageName, issue, status } = req.body;
+    const updateData = req.body;
 
-    if (!villageName || !issue || !status) {
-      return res.status(400).json({ error: true, message: 'All fields are required' });
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: true, message: 'Update data cannot be empty' });
     }
 
     const updatedReport = await Report.findByIdAndUpdate(
       id,
-      { villageName, issue, status },
+      updateData,
       { new: true }
     );
 

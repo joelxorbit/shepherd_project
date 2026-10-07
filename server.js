@@ -33,6 +33,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const reportRoutes = require('./src/routes/reportRoutes');
+const reportColumnRoutes = require('./src/routes/reportColumnRoutes');
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/public', publicRoutes);
@@ -40,6 +41,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/template', templateRoutes);
 app.use('/api/document', documentRoutes);
 app.use('/api/report', reportRoutes);
+app.use('/api/report-column', reportColumnRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

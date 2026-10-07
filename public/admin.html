@@ -36,6 +36,7 @@
       <div class="sidebar-menu">
         <button class="sidebar-item active" id="menu-templates">Templates</button>
         <button class="sidebar-item" id="menu-reports">Reports</button>
+        <button class="sidebar-item" id="menu-edit-table">Edit Table</button>
       </div>
     </aside>
 
@@ -141,25 +142,70 @@
       </div>
     </div>
 
+    <!-- Edit Table Content -->
+    <div class="admin-content hidden" id="content-edit-table">
+      <div class="content-header">
+        <h1 class="content-title">Edit Table Columns</h1>
+        <button class="btn btn-primary" id="add-column-btn">+ Add Column</button>
+      </div>
+
+      <div class="reports-container" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;" id="columns-table">
+          <thead>
+            <tr style="border-bottom: 1px solid #eee;">
+              <th style="padding: 12px;">Column Label</th>
+              <th style="padding: 12px;">Column Key</th>
+              <th style="padding: 12px;">Order</th>
+              <th style="padding: 12px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="columns-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add/Edit Column Modal -->
+    <div id="add-column-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+      <div class="modal-content" style="background: white; padding: 30px; border-radius: 8px; width: 400px; max-width: 90%;">
+        <h2 style="margin-top: 0;" id="column-modal-title">Add Column</h2>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label class="form-label">Column Label (e.g. Action Taken)</label>
+          <input type="text" id="column-label" class="form-input" />
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label class="form-label">Column Key (e.g. actionTaken)</label>
+          <input type="text" id="column-key" class="form-input" placeholder="No spaces, camelCase" />
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label class="form-label">Order Number</label>
+          <input type="number" id="column-order" class="form-input" value="10" />
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label class="form-label">Input Type</label>
+          <select id="column-input-type" class="form-input">
+            <option value="text">Text Box</option>
+            <option value="select">Dropdown (Select)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 20px; display: none;" id="column-options-group">
+          <label class="form-label">Dropdown Options (Comma separated)</label>
+          <input type="text" id="column-options" class="form-input" placeholder="e.g. Pending, In Progress, Resolved" />
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn btn-outline" id="cancel-column-btn">Cancel</button>
+          <button class="btn btn-primary" id="save-column-btn">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Report Modal -->
     <div id="add-report-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
       <div class="modal-content" style="background: white; padding: 30px; border-radius: 8px; width: 400px; max-width: 90%;">
         <h2 style="margin-top: 0;">Add Report</h2>
-        <div class="form-group" style="margin-bottom: 15px;">
-          <label class="form-label">Village Name</label>
-          <input type="text" id="report-village-name" class="form-input" />
-        </div>
-        <div class="form-group" style="margin-bottom: 15px;">
-          <label class="form-label">Issue</label>
-          <input type="text" id="report-issue" class="form-input" />
-        </div>
-        <div class="form-group" style="margin-bottom: 20px;">
-          <label class="form-label">Status</label>
-          <select id="report-status" class="form-input">
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Resolved">Resolved</option>
-          </select>
+        <div id="dynamic-report-fields">
+          <!-- Dynamically populated based on columns -->
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
           <button class="btn btn-outline" id="cancel-report-btn">Cancel</button>
