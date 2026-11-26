@@ -64,10 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
     $('menu-templates').classList.add('active');
     $('menu-reports').classList.remove('active');
     if($('menu-edit-table')) $('menu-edit-table').classList.remove('active');
+    if($('menu-certificates')) $('menu-certificates').classList.remove('active');
     $('content-templates').classList.remove('hidden');
     $('content-reports').classList.add('hidden');
     $('content-template-form').classList.add('hidden');
     if($('content-edit-table')) $('content-edit-table').classList.add('hidden');
+    if($('content-certificates')) $('content-certificates').classList.add('hidden');
     loadTemplates();
   });
 
@@ -75,10 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
     $('menu-reports').classList.add('active');
     $('menu-templates').classList.remove('active');
     if($('menu-edit-table')) $('menu-edit-table').classList.remove('active');
+    if($('menu-certificates')) $('menu-certificates').classList.remove('active');
     $('content-reports').classList.remove('hidden');
     $('content-templates').classList.add('hidden');
     $('content-template-form').classList.add('hidden');
     if($('content-edit-table')) $('content-edit-table').classList.add('hidden');
+    if($('content-certificates')) $('content-certificates').classList.add('hidden');
     await loadColumns();
     loadReports();
   });
@@ -88,14 +92,32 @@ document.addEventListener('DOMContentLoaded', () => {
       $('menu-edit-table').classList.add('active');
       $('menu-reports').classList.remove('active');
       $('menu-templates').classList.remove('active');
+      if($('menu-certificates')) $('menu-certificates').classList.remove('active');
       if($('content-edit-table')) $('content-edit-table').classList.remove('hidden');
       $('content-reports').classList.add('hidden');
       $('content-templates').classList.add('hidden');
       $('content-template-form').classList.add('hidden');
+      if($('content-certificates')) $('content-certificates').classList.add('hidden');
       await loadColumns();
       renderColumns();
     });
   }
+
+  if($('menu-certificates')) {
+    $('menu-certificates').addEventListener('click', () => {
+      $('menu-certificates').classList.add('active');
+      $('menu-templates').classList.remove('active');
+      $('menu-reports').classList.remove('active');
+      if($('menu-edit-table')) $('menu-edit-table').classList.remove('active');
+      if($('content-certificates')) $('content-certificates').classList.remove('hidden');
+      $('content-templates').classList.add('hidden');
+      $('content-reports').classList.add('hidden');
+      $('content-template-form').classList.add('hidden');
+      if($('content-edit-table')) $('content-edit-table').classList.add('hidden');
+    });
+  }
+
+  initCertificateGenerator();
 
   // Reports Events
   $('add-report-btn').addEventListener('click', () => {
@@ -755,4 +777,479 @@ async function saveColumn() {
   } catch(err) {
     showToast('Server error', 'error');
   }
+}
+
+// ─── Certificate Generator ───
+const certState = {
+  templateImage: null,
+  templateImageSrc: null,
+  imageWidth: 0,
+  imageHeight: 0,
+  excelData: [],
+  excelHeaders: [],
+  generatedZipBlob: null,
+  sampleDataUrl: null,
+  sampleName: null,
+  selectedCoordY: 500
+};
+
+function initCertificateGenerator() {
+  const chooseTemplateBtn = $('cert-choose-template-btn');
+  const templateInput = $('cert-template-input');
+  const templateBox = $('cert-template-box');
+
+  const chooseExcelBtn = $('cert-choose-excel-btn');
+  const excelInput = $('cert-excel-input');
+  const excelBox = $('cert-excel-box');
+
+  if (chooseTemplateBtn && templateInput) {
+    chooseTemplateBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      templateInput.click();
+    });
+    if (templateBox) {
+      templateBox.addEventListener('click', () => templateInput.click());
+    }
+    templateInput.addEventListener('change', handleTemplateFileSelect);
+  }
+
+  if (chooseExcelBtn && excelInput) {
+    chooseExcelBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      excelInput.click();
+    });
+    if (excelBox) {
+      excelBox.addEventListener('click', () => excelInput.click());
+    }
+    excelInput.addEventListener('change', handleExcelFileSelect);
+  }
+
+  // Text size slider
+  const sizeSlider = $('cert-font-size');
+  const sizeLabel = $('cert-size-label');
+  if (sizeSlider && sizeLabel) {
+    sizeSlider.addEventListener('input', (e) => {
+      sizeLabel.textContent = `Text Size (${e.target.value}px)`;
+    });
+  }
+
+  // Text color picker
+  const colorTrigger = $('cert-color-trigger');
+  const colorInput = $('cert-font-color');
+  const colorBar = $('cert-color-bar');
+  if (colorTrigger && colorInput && colorBar) {
+    colorTrigger.addEventListener('click', () => colorInput.click());
+    colorInput.addEventListener('input', (e) => {
+      colorBar.style.backgroundColor = e.target.value;
+    });
+  }
+
+  // Coordinates Modal
+  const findCoordsBtn = $('cert-find-coords-btn');
+  if (findCoordsBtn) findCoordsBtn.addEventListener('click', openCoordsModal);
+
+  const closeCoordsModalBtn = $('close-coords-modal');
+  if (closeCoordsModalBtn) closeCoordsModalBtn.addEventListener('click', closeCoordsModal);
+
+  const cancelCoordsBtn = $('cancel-coords-btn');
+  if (cancelCoordsBtn) cancelCoordsBtn.addEventListener('click', closeCoordsModal);
+
+  const applyCoordsBtn = $('apply-coords-btn');
+  if (applyCoordsBtn) applyCoordsBtn.addEventListener('click', applyCoords);
+
+  // Generate Button
+  const genBtn = $('cert-generate-btn');
+  if (genBtn) genBtn.addEventListener('click', startBulkCertificateGeneration);
+
+  // Download ZIP Button
+  const downloadZipBtn = $('cert-download-zip-btn');
+  if (downloadZipBtn) {
+    downloadZipBtn.addEventListener('click', () => {
+      if (certState.generatedZipBlob) {
+        downloadBlob(certState.generatedZipBlob, `Certificates_${Date.now()}.zip`);
+      }
+    });
+  }
+
+  // Preview Sample Modal
+  const previewSampleBtn = $('cert-preview-sample-btn');
+  if (previewSampleBtn) previewSampleBtn.addEventListener('click', openSamplePreviewModal);
+
+  const closePreviewModalBtn = $('close-preview-modal');
+  if (closePreviewModalBtn) {
+    closePreviewModalBtn.addEventListener('click', () => $('cert-preview-modal').classList.add('hidden'));
+  }
+
+  const closePreviewBtn = $('close-preview-btn');
+  if (closePreviewBtn) {
+    closePreviewBtn.addEventListener('click', () => $('cert-preview-modal').classList.add('hidden'));
+  }
+}
+
+function handleTemplateFileSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  $('cert-template-name').textContent = file.name;
+  $('cert-template-name').style.color = '#1e293b';
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const img = new Image();
+    img.onload = () => {
+      certState.templateImage = img;
+      certState.templateImageSrc = evt.target.result;
+      certState.imageWidth = img.naturalWidth;
+      certState.imageHeight = img.naturalHeight;
+
+      if (!$('cert-y-pos').value || $('cert-y-pos').value === '500') {
+        $('cert-y-pos').value = Math.round(img.naturalHeight * 0.55);
+      }
+      showToast(`Template loaded (${img.naturalWidth} x ${img.naturalHeight}px)`, 'info');
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleExcelFileSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  $('cert-excel-name').textContent = file.name;
+  $('cert-excel-name').style.color = '#1e293b';
+
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel parser library loading, please wait...', 'warning');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const headerRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const headers = headerRows[0] || [];
+
+      certState.excelData = json;
+      certState.excelHeaders = headers.map(h => String(h).trim()).filter(Boolean);
+
+      renderDetectedColumnPills();
+      showToast(`Excel file loaded: ${json.length} rows found`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to parse Excel file', 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderDetectedColumnPills() {
+  const container = $('cert-pills-container');
+  const wrap = $('cert-detected-cols');
+  if (!container || !wrap) return;
+
+  container.innerHTML = '';
+  if (!certState.excelHeaders.length) {
+    wrap.classList.add('hidden');
+    return;
+  }
+
+  wrap.classList.remove('hidden');
+  const currentVal = $('cert-column-name').value.trim().toLowerCase();
+  let hasAutoSelected = false;
+
+  certState.excelHeaders.forEach(col => {
+    const pill = document.createElement('span');
+    pill.className = 'cert-pill';
+    pill.textContent = col;
+
+    const lowerCol = col.toLowerCase();
+    if (lowerCol === currentVal || (!hasAutoSelected && (lowerCol === 'name' || lowerCol.includes('name')))) {
+      pill.classList.add('active');
+      $('cert-column-name').value = col;
+      hasAutoSelected = true;
+    }
+
+    pill.addEventListener('click', () => {
+      $('cert-column-name').value = col;
+      container.querySelectorAll('.cert-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+
+    container.appendChild(pill);
+  });
+}
+
+function openCoordsModal() {
+  if (!certState.templateImage) {
+    showToast('Please upload a certificate template image first', 'warning');
+    return;
+  }
+
+  const modal = $('cert-coords-modal');
+  const canvas = $('coords-canvas');
+  if (!modal || !canvas) return;
+
+  modal.classList.remove('hidden');
+  canvas.width = certState.imageWidth;
+  canvas.height = certState.imageHeight;
+
+  let currentY = parseInt($('cert-y-pos').value, 10);
+  if (isNaN(currentY) || currentY <= 0) {
+    currentY = Math.round(certState.imageHeight * 0.55);
+  }
+  certState.selectedCoordY = currentY;
+
+  drawCoordsGuide(currentY);
+
+  canvas.onmousemove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleY = canvas.height / rect.height;
+    const mouseImageY = Math.round((e.clientY - rect.top) * scaleY);
+    drawCoordsGuide(mouseImageY);
+
+    const tooltip = $('coords-tooltip');
+    if (tooltip) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = `${e.clientX - rect.left}px`;
+      tooltip.style.top = `${e.clientY - rect.top - 10}px`;
+      tooltip.textContent = `Y: ${mouseImageY}px (Click to select)`;
+    }
+  };
+
+  canvas.onmouseleave = () => {
+    const tooltip = $('coords-tooltip');
+    if (tooltip) tooltip.style.display = 'none';
+    drawCoordsGuide(certState.selectedCoordY);
+  };
+
+  canvas.onclick = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleY = canvas.height / rect.height;
+    const clickImageY = Math.round((e.clientY - rect.top) * scaleY);
+    certState.selectedCoordY = clickImageY;
+    drawCoordsGuide(clickImageY);
+    $('coords-selected-y').textContent = clickImageY;
+    applyCoords();
+    showToast(`Y position set to ${clickImageY}px`, 'success');
+  };
+}
+
+function drawCoordsGuide(targetY) {
+  const canvas = $('coords-canvas');
+  if (!canvas || !certState.templateImage) return;
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(certState.templateImage, 0, 0);
+
+  // Red horizontal guideline
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 6]);
+  ctx.moveTo(0, targetY);
+  ctx.lineTo(canvas.width, targetY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw Sample Candidate Name
+  const fontSize = parseInt($('cert-font-size').value, 10) || 60;
+  const fontColor = $('cert-font-color').value || '#000000';
+  const fontFamily = $('cert-font-family').value || 'Arial, sans-serif';
+  const fontWeight = $('cert-font-weight').value || 'bold';
+
+  ctx.save();
+  ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  ctx.fillStyle = fontColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Sample Name (Preview)', canvas.width / 2, targetY);
+  ctx.restore();
+
+  if ($('coords-selected-y')) {
+    $('coords-selected-y').textContent = Math.round(targetY);
+  }
+}
+
+function closeCoordsModal() {
+  $('cert-coords-modal').classList.add('hidden');
+}
+
+function applyCoords() {
+  $('cert-y-pos').value = certState.selectedCoordY;
+  closeCoordsModal();
+}
+
+async function startBulkCertificateGeneration() {
+  if (!certState.templateImage) {
+    showToast('Please upload a certificate template image (.png, .jpg)', 'warning');
+    return;
+  }
+
+  if (!certState.excelData || !certState.excelData.length) {
+    showToast('Please upload an Excel file (.xlsx) containing participant names', 'warning');
+    return;
+  }
+
+  const rawColName = $('cert-column-name').value.trim();
+  if (!rawColName) {
+    showToast('Please specify the Excel column name (e.g. name)', 'warning');
+    return;
+  }
+
+  const firstRow = certState.excelData[0] || {};
+  const exactKey = Object.keys(firstRow).find(k => k === rawColName);
+  const matchedCol = exactKey || Object.keys(firstRow).find(k => k.trim().toLowerCase() === rawColName.toLowerCase());
+
+  if (!matchedCol) {
+    const available = Object.keys(firstRow).join(', ');
+    showToast(`Column "${rawColName}" not found in Excel. Available: ${available}`, 'error', 6000);
+    return;
+  }
+
+  const names = certState.excelData
+    .map(row => String(row[matchedCol] || '').trim())
+    .filter(name => name.length > 0);
+
+  if (!names.length) {
+    showToast(`No names found in column "${matchedCol}"`, 'error');
+    return;
+  }
+
+  if (typeof JSZip === 'undefined') {
+    showToast('ZIP compression library is loading, please wait...', 'warning');
+    return;
+  }
+
+  const yPos = parseInt($('cert-y-pos').value, 10);
+  if (isNaN(yPos) || yPos <= 0) {
+    showToast('Please enter a valid Y Axis Position number', 'warning');
+    return;
+  }
+
+  const fontSize = parseInt($('cert-font-size').value, 10) || 60;
+  const fontColor = $('cert-font-color').value || '#000000';
+  const fontFamily = $('cert-font-family').value || 'Arial, sans-serif';
+  const fontWeight = $('cert-font-weight').value || 'bold';
+
+  const genBtn = $('cert-generate-btn');
+  const progressBox = $('cert-progress-box');
+  const progressBar = $('cert-progress-bar-fill');
+  const progressStatus = $('cert-progress-status');
+  const resultBox = $('cert-result-box');
+
+  genBtn.disabled = true;
+  progressBox.classList.remove('hidden');
+  resultBox.classList.add('hidden');
+  progressBar.style.width = '0%';
+  progressStatus.textContent = `Starting generation for ${names.length} certificates...`;
+
+  try {
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = certState.imageWidth;
+    offscreenCanvas.height = certState.imageHeight;
+    const ctx = offscreenCanvas.getContext('2d');
+
+    const zip = new JSZip();
+    const total = names.length;
+
+    // Ensure fonts are loaded before drawing
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+
+    for (let i = 0; i < total; i++) {
+      const name = names[i];
+      ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+      ctx.drawImage(certState.templateImage, 0, 0);
+
+      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = fontColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(name, offscreenCanvas.width / 2, yPos);
+
+      const dataUrl = offscreenCanvas.toDataURL('image/png');
+      const base64Data = dataUrl.split(',')[1];
+      const safeName = name.replace(/[^\w\s-]/gi, '').trim().replace(/\s+/g, '_') || `Certificate_${i + 1}`;
+      const filename = `${safeName}.png`;
+      zip.file(filename, base64Data, { base64: true });
+
+      if (i === 0) {
+        certState.sampleDataUrl = dataUrl;
+        certState.sampleName = name;
+      }
+
+      const percent = Math.round(((i + 1) / total) * 85);
+      progressBar.style.width = `${percent}%`;
+      progressStatus.textContent = `Generated certificate ${i + 1} of ${total}: "${name}"`;
+
+      if (i % 3 === 0) {
+        await new Promise(res => setTimeout(res, 0));
+      }
+    }
+
+    progressStatus.textContent = 'Compressing certificates into ZIP archive...';
+    progressBar.style.width = '90%';
+
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    }, (meta) => {
+      const pct = 90 + Math.round(meta.percent * 0.1);
+      progressBar.style.width = `${pct}%`;
+    });
+
+    certState.generatedZipBlob = zipBlob;
+    progressBar.style.width = '100%';
+    progressBox.classList.add('hidden');
+    resultBox.classList.remove('hidden');
+    $('cert-result-desc').textContent = `${total} certificates successfully generated and packaged.`;
+
+    const zipFileName = `Certificates_${Date.now()}.zip`;
+    downloadBlob(zipBlob, zipFileName);
+    showToast(`Generated ${total} certificates! Downloading ZIP...`, 'success', 6000);
+  } catch (err) {
+    console.error(err);
+    showToast(`Error during certificate generation: ${err.message}`, 'error', 8000);
+    progressBox.classList.add('hidden');
+  } finally {
+    genBtn.disabled = false;
+  }
+}
+
+function openSamplePreviewModal() {
+  if (!certState.sampleDataUrl) {
+    showToast('No generated certificate sample to preview yet', 'info');
+    return;
+  }
+
+  $('cert-preview-img').src = certState.sampleDataUrl;
+  $('cert-preview-caption').textContent = `Generated Sample: ${certState.sampleName || 'Candidate'}`;
+  const singleBtn = $('download-single-sample-btn');
+  singleBtn.href = certState.sampleDataUrl;
+  singleBtn.download = `Certificate_${(certState.sampleName || 'Sample').replace(/\s+/g, '_')}.png`;
+
+  $('cert-preview-modal').classList.remove('hidden');
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 2000);
 }

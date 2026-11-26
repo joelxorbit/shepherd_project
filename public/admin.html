@@ -8,7 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="/css/admin.css" />
@@ -37,6 +37,7 @@
         <button class="sidebar-item active" id="menu-templates">Templates</button>
         <button class="sidebar-item" id="menu-reports">Reports</button>
         <button class="sidebar-item" id="menu-edit-table">Edit Table</button>
+        <button class="sidebar-item" id="menu-certificates">Certificate Generate</button>
       </div>
     </aside>
 
@@ -129,14 +130,17 @@
         </div>
 
         <div class="form-section">
-          <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 15px;">
+          <div style="margin-bottom: 8px;">
             <h2 class="section-title" style="margin:0;">Configuration Steps</h2>
-            <button class="btn btn-sm btn-primary" id="add-step-btn">+ Add Step</button>
           </div>
           <p class="section-desc">Define the steps the user will go through to fill this template.</p>
 
           <div id="steps-container" class="steps-container">
             <!-- Steps added dynamically here -->
+          </div>
+
+          <div style="margin-top: 18px;">
+            <button type="button" class="btn btn-primary" id="add-step-btn">+ Add Step</button>
           </div>
         </div>
       </div>
@@ -213,6 +217,179 @@
         </div>
       </div>
     </div>
+    <!-- Certificate Generator Content -->
+    <div class="admin-content hidden" id="content-certificates">
+      <div class="cert-generator-wrapper">
+        <div class="cert-card">
+          <h1 class="cert-title">Certificate Generator Free Online</h1>
+          <p class="cert-subtitle">Bulk generate certificates from an Excel file.</p>
+
+          <!-- Excel Column Name -->
+          <div class="cert-form-group">
+            <label class="cert-label" for="cert-column-name">Excel Column Name (Ex: name)</label>
+            <input type="text" id="cert-column-name" class="cert-input" placeholder="Enter column name" value="name" />
+            <div id="cert-detected-cols" class="cert-detected-cols hidden">
+              <span class="cert-detected-label">Detected columns:</span>
+              <div id="cert-pills-container" class="cert-pills-container"></div>
+            </div>
+          </div>
+
+          <!-- Upload Certificate Template -->
+          <div class="cert-form-group">
+            <label class="cert-label">Upload Certificate Template (.png, .jpg, .jpeg)</label>
+            <div class="cert-file-box" id="cert-template-box">
+              <input type="file" id="cert-template-input" accept="image/png, image/jpeg, image/jpg" style="display: none;" />
+              <button type="button" class="cert-choose-btn" id="cert-choose-template-btn">Choose File</button>
+              <span class="cert-file-name" id="cert-template-name">No file chosen</span>
+            </div>
+          </div>
+
+          <!-- Upload Excel File -->
+          <div class="cert-form-group">
+            <label class="cert-label">Upload Excel File (.xlsx)</label>
+            <div class="cert-file-box" id="cert-excel-box">
+              <input type="file" id="cert-excel-input" accept=".xlsx, .xls" style="display: none;" />
+              <button type="button" class="cert-choose-btn" id="cert-choose-excel-btn">Choose File</button>
+              <span class="cert-file-name" id="cert-excel-name">No file chosen</span>
+            </div>
+          </div>
+
+          <!-- Find coordinates link -->
+          <div class="cert-coord-link-box">
+            <a href="javascript:void(0)" class="cert-coord-link" id="cert-find-coords-btn">Find your certificate coordinates here &rarr;</a>
+          </div>
+
+          <!-- Y Axis Position -->
+          <div class="cert-form-group">
+            <label class="cert-label" for="cert-y-pos">Y Axis Position (number)</label>
+            <input type="number" id="cert-y-pos" class="cert-input" placeholder="e.g., 500" value="500" />
+          </div>
+
+          <!-- Row: Text Size & Text Color -->
+          <div class="cert-form-row">
+            <div class="cert-form-col">
+              <label class="cert-label" id="cert-size-label">Text Size (60px)</label>
+              <div class="cert-slider-container">
+                <input type="range" id="cert-font-size" class="cert-range-input" min="16" max="180" value="60" />
+              </div>
+            </div>
+            <div class="cert-form-col">
+              <label class="cert-label">Text Color</label>
+              <div class="cert-color-container" id="cert-color-trigger">
+                <div class="cert-color-bar" id="cert-color-bar" style="background-color: #000000;"></div>
+                <input type="color" id="cert-font-color" value="#000000" style="display: none;" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Typography / Font Settings -->
+          <div class="cert-form-row" style="margin-top: 10px;">
+            <div class="cert-form-col">
+              <label class="cert-label">Font Family</label>
+              <select id="cert-font-family" class="cert-input" style="height: 42px; padding: 6px 12px; cursor: pointer;">
+                <option value="Arial, sans-serif" selected>Arial (Standard Sans)</option>
+                <option value="'Great Vibes', cursive">Great Vibes (Calligraphy Script)</option>
+                <option value="'Playfair Display', serif">Playfair Display (Luxury Serif)</option>
+                <option value="'Cinzel', serif">Cinzel (Roman Formal)</option>
+                <option value="'Montserrat', sans-serif">Montserrat (Modern Clean)</option>
+                <option value="'Times New Roman', serif">Times New Roman (Classic Serif)</option>
+              </select>
+            </div>
+            <div class="cert-form-col">
+              <label class="cert-label">Font Weight</label>
+              <select id="cert-font-weight" class="cert-input" style="height: 42px; padding: 6px 12px; cursor: pointer;">
+                <option value="bold" selected>Bold</option>
+                <option value="600">Semi-Bold</option>
+                <option value="normal">Normal</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Generate Certificates Button -->
+          <button type="button" class="cert-generate-button" id="cert-generate-btn">
+            Generate Certificates
+          </button>
+
+          <!-- Generation Progress -->
+          <div id="cert-progress-box" class="cert-progress-box hidden">
+            <div class="cert-progress-bar-track">
+              <div id="cert-progress-bar-fill" class="cert-progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div id="cert-progress-status" class="cert-progress-status">Preparing certificates...</div>
+          </div>
+
+          <!-- Result Container -->
+          <div id="cert-result-box" class="cert-result-box hidden">
+            <div class="cert-result-header">
+              <span class="cert-check-icon">✅</span>
+              <div>
+                <strong style="color: #065f46; font-size: 1.05rem;">Certificates Ready!</strong>
+                <p style="margin: 2px 0 0; color: #047857; font-size: 0.88rem;" id="cert-result-desc">Bulk certificates successfully generated.</p>
+              </div>
+            </div>
+            <div class="cert-result-actions">
+              <button type="button" class="btn btn-primary" id="cert-download-zip-btn" style="background: #10b981; border-color: #059669; font-weight: 600;">
+                📥 Download All (.ZIP)
+              </button>
+              <button type="button" class="btn btn-outline" id="cert-preview-sample-btn">
+                👁️ Preview Sample
+              </button>
+            </div>
+          </div>
+
+        </div><!-- /cert-card -->
+      </div><!-- /cert-generator-wrapper -->
+    </div>
+
+    <!-- Coordinate Finder Modal -->
+    <div id="cert-coords-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1050; padding: 20px;">
+      <div class="modal-content" style="background: white; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+        <div style="padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <div>
+            <h2 style="margin: 0; font-size: 1.25rem; color: #1e293b;">Find Certificate Coordinates</h2>
+            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">Move mouse over the certificate and click anywhere to set the Y-Axis position. Red line shows text position.</p>
+          </div>
+          <button type="button" class="icon-btn" id="close-coords-modal" style="font-size: 1.2rem; cursor: pointer;">✕</button>
+        </div>
+        <div style="flex: 1; overflow: auto; padding: 20px; background: #0f172a; text-align: center; position: relative;">
+          <div style="display: inline-block; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: crosshair;">
+            <canvas id="coords-canvas" style="display: block; max-width: 100%; height: auto;"></canvas>
+            <div id="coords-tooltip" style="position: absolute; display: none; background: rgba(15, 23, 42, 0.9); color: white; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; pointer-events: none; border: 1px solid #6366f1; transform: translate(-50%, -130%); white-space: nowrap; z-index: 10;">
+              Y: 500px (Click to select)
+            </div>
+          </div>
+        </div>
+        <div style="padding: 14px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <div style="font-size: 0.9rem; color: #334155;">
+            Selected Y Position: <strong id="coords-selected-y" style="color: #6366f1; font-size: 1.1rem;">500</strong> px
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-outline" id="cancel-coords-btn">Cancel</button>
+            <button type="button" class="btn btn-primary" id="apply-coords-btn">Apply Position</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Certificate Preview Modal -->
+    <div id="cert-preview-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1050; padding: 20px;">
+      <div class="modal-content" style="background: white; border-radius: 12px; width: 850px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+        <div style="padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <h2 style="margin: 0; font-size: 1.25rem; color: #1e293b;">Certificate Preview</h2>
+          <button type="button" class="icon-btn" id="close-preview-modal" style="font-size: 1.2rem; cursor: pointer;">✕</button>
+        </div>
+        <div style="flex: 1; overflow: auto; padding: 20px; background: #1e293b; text-align: center;">
+          <img id="cert-preview-img" src="" alt="Certificate Preview" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" />
+        </div>
+        <div style="padding: 14px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <span style="font-size: 0.9rem; color: #64748b;" id="cert-preview-caption">Sample Generated Certificate</span>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-outline" id="close-preview-btn">Close</button>
+            <a class="btn btn-primary" id="download-single-sample-btn" href="#" download="Sample_Certificate.png">Download This Certificate</a>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
@@ -268,6 +445,8 @@
     </div>
   </template>
 
+  <script src="/js/vendor/xlsx.full.min.js"></script>
+  <script src="/js/vendor/jszip.min.js"></script>
   <script src="/js/admin.js"></script>
 
 </body>

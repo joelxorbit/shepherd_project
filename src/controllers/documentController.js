@@ -55,9 +55,7 @@ async function generateDynamic(req, res, next) {
     res.json({
       success: true,
       filename: result.filename,
-      pdfFilename: result.pdfFilename,
       docxBase64: result.docxBase64,
-      pdfBase64: result.pdfBase64,
     });
   } catch (err) {
     console.error('[GENERATE] Error:', err);

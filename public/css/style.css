@@ -548,6 +548,7 @@ a:hover { text-decoration: underline; }
   font-family: var(--font-sans);
   font-size: 0.9rem;
   line-height: 1.7;
+  text-align: justify;
 }
 .ql-editor.ql-blank::before { color: var(--text-muted) !important; font-style: normal !important; }
 .ql-stroke { stroke: var(--text-secondary) !important; }

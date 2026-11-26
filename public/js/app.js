@@ -169,7 +169,16 @@ function buildDynamicForm(template) {
       else if (field.type === 'rich_text') {
         const editor = new Quill(`#${fieldId}`, {
           theme: 'snow',
-          modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['clean']] }
+          modules: {
+            toolbar: [
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ header: [1, 2, 3, false] }],
+              [{ align: '' }, { align: 'center' }, { align: 'right' }, { align: 'justify' }],
+              [{ list: 'ordered' }, { list: 'bullet' }],
+              [{ color: [] }, { background: [] }],
+              ['blockquote', 'clean']
+            ]
+          }
         });
         state.quillEditors[mapKey] = editor;
         editor.on('text-change', () => {
@@ -312,11 +321,36 @@ async function handleGenerate() {
     const formData = new FormData();
     formData.append('templateId', state.selectedTemplate._id);
 
-    // Text & Rich Text fields
+    // Text & Rich Text fields - comprehensively collect from all configured steps
     const textData = {};
+    if (state.selectedTemplate && state.selectedTemplate.steps) {
+      state.selectedTemplate.steps.forEach((step, sIdx) => {
+        step.fields.forEach((field, fIdx) => {
+          const mapKey = field.placeholderMap;
+          const fieldId = `field_${sIdx}_${fIdx}`;
+          if (field.type === 'text') {
+            const input = $(fieldId);
+            textData[mapKey] = input ? input.value : (state.dynamicFields[mapKey] || '');
+          } else if (field.type === 'rich_text') {
+            const editor = state.quillEditors[mapKey];
+            if (editor) {
+              const html = editor.root.innerHTML;
+              textData[mapKey] = (html === '<p><br></p>') ? '' : html;
+            } else {
+              textData[mapKey] = state.dynamicFields[mapKey] || '';
+            }
+          }
+        });
+      });
+    }
+
+    // Include any additional dynamic fields that were set
     Object.keys(state.dynamicFields).forEach(key => {
-      textData[key] = state.dynamicFields[key];
+      if (textData[key] === undefined) {
+        textData[key] = state.dynamicFields[key];
+      }
     });
+
     formData.append('dynamicTextData', JSON.stringify(textData));
 
     // Images
@@ -379,21 +413,10 @@ function showDownloadPanel(data) {
   $('download-filename').textContent = data.filename;
   
   if (state.docxDownloadUrl) URL.revokeObjectURL(state.docxDownloadUrl);
-  if (state.pdfDownloadUrl) URL.revokeObjectURL(state.pdfDownloadUrl);
 
   state.docxDownloadUrl = base64ToBlobUrl(data.docxBase64, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   $('docx-download-btn').href = state.docxDownloadUrl;
   $('docx-download-btn').download = data.filename;
-
-  const pdfBtn = $('pdf-download-btn');
-  if (data.pdfBase64) {
-    state.pdfDownloadUrl = base64ToBlobUrl(data.pdfBase64, 'application/pdf');
-    pdfBtn.href = state.pdfDownloadUrl;
-    pdfBtn.download = data.pdfFilename || data.filename.replace('.docx', '.pdf');
-    pdfBtn.style.display = 'inline-flex';
-  } else {
-    pdfBtn.style.display = 'none';
-  }
 }
 
 function resetGenerationState() {
