@@ -193,7 +193,76 @@ function buildDynamicForm(template) {
   });
 }
 
-// ─── DYNAMIC IMAGE HANDLING ───
+// ─── DYNAMIC IMAGE HANDLING & CLIENT-SIDE COMPRESSION ───
+
+/**
+ * Compress an image file client-side using HTML5 Canvas to strictly stay within Vercel's 4.5MB request limit.
+ * Converts large phone/camera images (3-12MB) down to crisp, print-ready JPEGs (150-250KB).
+ */
+function compressImageForUpload(file, maxDimension = 1600, quality = 0.82) {
+  if (!file || !file.type || !file.type.startsWith('image/')) {
+    return Promise.resolve(file);
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        // If image is already smaller than maxDimension and file is < 300KB, no recompression needed
+        if (width <= maxDimension && height <= maxDimension && file.size < 300 * 1024) {
+          return resolve(file);
+        }
+
+        // Maintain aspect ratio
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // White background for PNG transparency
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size >= file.size) {
+              return resolve(file);
+            }
+            const cleanName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+            const compressed = new File([blob], cleanName, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            console.log(`[CLIENT COMPRESS] ${file.name}: ${(file.size / 1024).toFixed(0)}KB -> ${(compressed.size / 1024).toFixed(0)}KB (${width}x${height})`);
+            resolve(compressed);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 function initDynamicImageDropzone(dropZoneId, fileInputId, gridId, mapKey) {
   const dropZone = $(dropZoneId);
   const fileInput = $(fileInputId);
@@ -219,10 +288,16 @@ function handleDynamicImages(files, mapKey, gridId) {
   const arr = state.imagePreviews[mapKey];
   
   imageFiles.forEach(f => {
-    arr.push({
+    const item = {
       file: f,
       name: f.name,
       objectUrl: URL.createObjectURL(f)
+    };
+    arr.push(item);
+
+    // Pre-compress in background to speed up generation
+    compressImageForUpload(f, 1600, 0.82).then(compressed => {
+      item.file = compressed;
     });
   });
 
@@ -353,23 +428,54 @@ async function handleGenerate() {
 
     formData.append('dynamicTextData', JSON.stringify(textData));
 
-    // Images
+    // 1. Optimize and compress all images client-side before upload to stay under Vercel's 4.5MB limit
+    setStatus('Optimizing images for upload...', 'loading');
+    for (const key of Object.keys(state.imagePreviews)) {
+      const arr = state.imagePreviews[key];
+      for (let i = 0; i < arr.length; i++) {
+        arr[i].file = await compressImageForUpload(arr[i].file, 1600, 0.82);
+      }
+    }
+
+    // 2. Check total image payload size
+    let totalImgBytes = 0;
+    Object.keys(state.imagePreviews).forEach(key => {
+      state.imagePreviews[key].forEach(imgObj => {
+        totalImgBytes += (imgObj.file.size || 0);
+      });
+    });
+
+    // If total image payload is still over 3.6MB (e.g. 15+ photos), perform a second pass at 1100px & 0.72 quality
+    if (totalImgBytes > 3.6 * 1024 * 1024) {
+      console.warn(`[GENERATE] Total image payload (${(totalImgBytes/1024/1024).toFixed(2)}MB) approaching Vercel limit. Applying high-efficiency compression...`);
+      for (const key of Object.keys(state.imagePreviews)) {
+        const arr = state.imagePreviews[key];
+        for (let i = 0; i < arr.length; i++) {
+          arr[i].file = await compressImageForUpload(arr[i].file, 1100, 0.72);
+        }
+      }
+    }
+
+    // Append images
     Object.keys(state.imagePreviews).forEach(key => {
       const arr = state.imagePreviews[key];
       arr.forEach(imgObj => {
-        // We append them using the key, multer will parse them into an array under this field name
         formData.append(key, imgObj.file);
       });
     });
 
-    const data = await fetch('/api/document/generate-dynamic', {
+    setStatus('Generating document...', 'loading');
+    const res = await fetch('/api/document/generate-dynamic', {
       method: 'POST',
       body: formData,
-    }).then(async r => {
-      const json = await r.json();
-      if (!r.ok) throw new Error(json.message || 'Generation failed');
-      return json;
     });
+
+    if (res.status === 413) {
+      throw new Error('Upload size exceeded serverless payload limit (413). Please upload fewer or smaller images.');
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Generation failed');
 
     showDownloadPanel(data);
     setStatus('Document ready', 'ready');
